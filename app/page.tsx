@@ -2,16 +2,12 @@ export const dynamic = 'force-dynamic';
 
 import ScoreCard from '@/components/ScoreCard';
 import MonthlyChart from '@/components/MonthlyChart';
+import { buildDashboardData } from '@/lib/dashboard';
 import { DashboardData } from '@/types';
 
 async function getDashboardData(): Promise<DashboardData | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/dashboard`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) throw new Error('Failed to fetch');
-    return res.json();
+    return await buildDashboardData();
   } catch {
     return null;
   }

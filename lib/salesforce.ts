@@ -3,7 +3,6 @@ import { ProgrammeFinanceRecord } from '@/types';
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
 const SF_CLIENT_SECRET = process.env.SF_CLIENT_SECRET!;
-const FY_2027_ID = process.env.SF_FY_2027_ID || 'a2JP30000016vnpMAA';
 
 let tokenCache: { token: string; expires: number } | null = null;
 
@@ -58,12 +57,14 @@ async function query<T>(soql: string): Promise<T[]> {
 }
 
 export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceRecord[]> {
+  // FY 2026/27 runs March 2026 – February 2027
   const soql = `
     SELECT Id, Name, Target_Amount__c, Confirmed__c, Expected__c, Potential__c,
            Recruitment_Target_Month__c, Month__c, Year__c, Type__c,
            Programme__r.Name
     FROM Recruitment_Target__c
-    WHERE Financial_Year__c = '${FY_2027_ID}'
+    WHERE Recruitment_Target_Month__c >= 2026-03-01
+      AND Recruitment_Target_Month__c <= 2027-02-28
     ORDER BY Recruitment_Target_Month__c ASC
   `;
   return query<ProgrammeFinanceRecord>(soql);
