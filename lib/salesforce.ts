@@ -1,0 +1,70 @@
+import { ProgrammeFinanceRecord } from '@/types';
+
+const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
+const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
+const SF_CLIENT_SECRET = process.env.SF_CLIENT_SECRET!;
+const FY_2027_ID = process.env.SF_FY_2027_ID || 'a2JP30000016vnpMAA';
+
+let tokenCache: { token: string; expires: number } | null = null;
+
+async function getAccessToken(): Promise<string> {
+  if (tokenCache && tokenCache.expires > Date.now()) {
+    return tokenCache.token;
+  }
+
+  const response = await fetch(`${SF_INSTANCE_URL}/services/oauth2/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: SF_CLIENT_ID,
+      client_secret: SF_CLIENT_SECRET,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Salesforce auth failed: ${error}`);
+  }
+
+  const data = await response.json();
+  tokenCache = {
+    token: data.access_token,
+    expires: Date.now() + 55 * 60 * 1000, // 55 minutes
+  };
+
+  return data.access_token;
+}
+
+async function query<T>(soql: string): Promise<T[]> {
+  const token = await getAccessToken();
+  const response = await fetch(
+    `${SF_INSTANCE_URL}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Salesforce query failed: ${error}`);
+  }
+
+  const data = await response.json();
+  return data.records as T[];
+}
+
+export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceRecord[]> {
+  const soql = `
+    SELECT Id, Name, Target_Amount__c, Confirmed__c, Expected__c, Potential__c,
+           Recruitment_Target_Month__c, Month__c, Year__c, Type__c,
+           Programme__r.Name
+    FROM Recruitment_Target__c
+    WHERE Financial_Year__c = '${FY_2027_ID}'
+    ORDER BY Recruitment_Target_Month__c ASC
+  `;
+  return query<ProgrammeFinanceRecord>(soql);
+}

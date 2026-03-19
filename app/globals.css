@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --day: #fcf2e3;
+  --night: #212122;
+  --sunshine: #ffcc12;
+  --earth: #dd6945;
+  --forest: #195e47;
+  --sky: #85d1e3;
+}
+
+body {
+  background-color: var(--day);
+  color: var(--night);
+}
+
+.fi-card {
+  @apply bg-white rounded-2xl shadow-sm border border-[#e8ddd0] p-6;
+}
+
+.fi-ahead {
+  color: var(--forest);
+}
+
+.fi-behind {
+  color: var(--earth);
+}
