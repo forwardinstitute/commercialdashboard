@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import ScoreCard from '@/components/ScoreCard';
 import MonthlyChart from '@/components/MonthlyChart';
 import { DashboardData } from '@/types';
