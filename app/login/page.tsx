@@ -14,20 +14,25 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    if (error) {
-      setError('Something went wrong. Please try again or contact Kieran.');
-    } else {
-      setSent(true);
+      if (error) {
+        setError(`Something went wrong: ${error.message}`);
+      } else {
+        setSent(true);
+      }
+    } catch (err) {
+      setError(`Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
