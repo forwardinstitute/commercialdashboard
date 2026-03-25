@@ -36,6 +36,8 @@ function aggregateByMonth(
         confirmed: 0,
         expected: 0,
         potential: 0,
+        costs: 0,
+        margin: 0,
         isPast: isOnOrBeforeCurrentMonth(key, today),
       });
     }
@@ -45,6 +47,8 @@ function aggregateByMonth(
     entry.confirmed += r.Monthly_Confirmed__c || 0;
     entry.expected  += r.Monthly_Expected__c  || 0;
     entry.potential += r.Monthly_Potential__c || 0;
+    entry.costs     += r.Monthly_Costs__c    || 0;
+    entry.margin     = entry.confirmed - entry.costs;
   }
 
   return Array.from(byMonth.values()).sort((a, b) =>
@@ -52,13 +56,14 @@ function aggregateByMonth(
   );
 }
 
-// Build per-programme breakdown cards.
-// Only shows programmes that have a target set OR some confirmed activity.
+// Build breakdown cards grouped by programme type (Record Type via Type__c).
+// e.g. "Fellowship Programme", "Exchange Programme", "Leading Through Disruption"
+// Only shows types that have a target set OR some confirmed activity.
 function buildBreakdown(
   records: ProgrammeFinanceRecord[],
   today: Date
 ): ProgrammeGroup[] {
-  const byProg = new Map<string, {
+  const byType = new Map<string, {
     recs: ProgrammeFinanceRecord[];
     totalTarget: number;
     totalConfirmed: number;
@@ -67,11 +72,11 @@ function buildBreakdown(
   }>();
 
   for (const r of records) {
-    const name = r.Programme__r?.Name || 'Unknown';
-    if (!byProg.has(name)) {
-      byProg.set(name, { recs: [], totalTarget: 0, totalConfirmed: 0, totalExpected: 0, totalPotential: 0 });
+    const type = r.Type__c || 'Unknown';
+    if (!byType.has(type)) {
+      byType.set(type, { recs: [], totalTarget: 0, totalConfirmed: 0, totalExpected: 0, totalPotential: 0 });
     }
-    const entry = byProg.get(name)!;
+    const entry = byType.get(type)!;
     entry.recs.push(r);
     entry.totalTarget    += r.Target_Amount__c    || 0;
     entry.totalConfirmed += r.Monthly_Confirmed__c || 0;
@@ -79,10 +84,10 @@ function buildBreakdown(
     entry.totalPotential += r.Monthly_Potential__c || 0;
   }
 
-  return Array.from(byProg.entries())
+  return Array.from(byType.entries())
     .filter(([, v]) => v.totalTarget > 0 || v.totalConfirmed > 0)
-    .map(([name, v]) => ({
-      name,
+    .map(([type, v]) => ({
+      name: type,
       type: 'programmes' as const,
       totalTarget: v.totalTarget,
       totalConfirmed: v.totalConfirmed,

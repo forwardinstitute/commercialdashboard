@@ -68,6 +68,7 @@ export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceReco
            Monthly_Confirmed__c,
            Monthly_Expected__c,
            Monthly_Potential__c,
+           Monthly_Costs__c,
            Invoiced_Paid__c,
            Invoiced_Amount__c
     FROM Recruitment_Target__c

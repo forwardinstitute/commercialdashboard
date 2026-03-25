@@ -11,6 +11,7 @@ export interface ProgrammeFinanceRecord {
   Monthly_Confirmed__c: number | null;
   Monthly_Expected__c: number | null;
   Monthly_Potential__c: number | null;
+  Monthly_Costs__c: number | null;
   Invoiced_Paid__c: number | null;
   Invoiced_Amount__c: number | null;
 }
@@ -22,7 +23,19 @@ export interface MonthlyData {
   confirmed: number;
   expected: number;
   potential: number;
+  costs: number;
+  margin: number;      // confirmed - costs
   isPast: boolean;
+}
+
+export interface AdvisoryData {
+  ytdConfirmed: number;
+  ytdTarget: number;
+  ytdCosts: number;
+  ytdMargin: number;
+  variance: number;
+  months: MonthlyData[];
+  lastUpdated: string;
 }
 
 export interface ProgrammeGroup {
