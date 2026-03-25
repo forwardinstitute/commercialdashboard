@@ -1,20 +1,23 @@
 export interface ProgrammeFinanceRecord {
   Id: string;
   Name: string;
-  Target_Amount__c: number;
-  Confirmed__c: number;
-  Expected__c: number;
-  Potential__c: number;
-  Recruitment_Target_Month__c: string;
-  Month__c: number;
-  Year__c: number;
   Type__c: string;
-  Programme__r?: { Name: string };
+  Programme__r?: {
+    Name: string;
+    RecordType?: { DeveloperName: string };
+  };
+  Recruitment_Target_Month__c: string; // end-of-month date, e.g. "2026-03-31"
+  Target_Amount__c: number | null;
+  Monthly_Confirmed__c: number | null;
+  Monthly_Expected__c: number | null;
+  Monthly_Potential__c: number | null;
+  Invoiced_Paid__c: number | null;
+  Invoiced_Amount__c: number | null;
 }
 
 export interface MonthlyData {
-  month: string;
-  monthDate: string;
+  month: string;       // e.g. "Mar"
+  monthDate: string;   // e.g. "2026-03-31"
   target: number;
   confirmed: number;
   expected: number;

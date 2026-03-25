@@ -29,7 +29,7 @@ async function getAccessToken(): Promise<string> {
   const data = await response.json();
   tokenCache = {
     token: data.access_token,
-    expires: Date.now() + 55 * 60 * 1000, // 55 minutes
+    expires: Date.now() + 55 * 60 * 1000,
   };
 
   return data.access_token;
@@ -57,11 +57,19 @@ async function query<T>(soql: string): Promise<T[]> {
 }
 
 export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceRecord[]> {
-  // FY 2026/27 runs March 2026 – February 2027
+  // FY 2026/27: March 2026 – February 2027
+  // Dates stored as end-of-month in Salesforce (e.g. 2026-03-31)
   const soql = `
-    SELECT Id, Name, Target_Amount__c, Confirmed__c, Expected__c, Potential__c,
-           Recruitment_Target_Month__c, Month__c, Year__c, Type__c,
-           Programme__r.Name
+    SELECT Id, Name, Type__c,
+           Programme__r.Name,
+           Programme__r.RecordType.DeveloperName,
+           Recruitment_Target_Month__c,
+           Target_Amount__c,
+           Monthly_Confirmed__c,
+           Monthly_Expected__c,
+           Monthly_Potential__c,
+           Invoiced_Paid__c,
+           Invoiced_Amount__c
     FROM Recruitment_Target__c
     WHERE Recruitment_Target_Month__c >= 2026-03-01
       AND Recruitment_Target_Month__c <= 2027-02-28
