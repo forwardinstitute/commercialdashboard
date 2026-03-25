@@ -24,13 +24,13 @@ const fmtFull = (n: number) =>
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#212122] text-[#fcf2e3] rounded-xl p-3 text-sm shadow-lg min-w-[180px]">
-      <p className="font-bold mb-2" style={{ fontFamily: 'Inria Serif, serif' }}>{label}</p>
+    <div className="bg-white border border-[#e8ddd0] text-[#212122] rounded-xl p-3 text-sm shadow-lg min-w-[180px]">
+      <p className="font-bold mb-2 text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{label}</p>
       {payload.map((p: any) => (
-        p.value !== 0 && (
+        p.value !== null && p.value !== 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.color }}>{p.name}</span>
-            <span className="font-medium">{fmtFull(p.value)}</span>
+            <span style={{ color: p.color === '#212122' ? '#195e47' : p.color }}>{p.name}</span>
+            <span className="font-medium text-[#212122]">{fmtFull(p.value)}</span>
           </p>
         )
       ))}
@@ -39,7 +39,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // For past months show confirmed income; for future show pipeline (expected + potential)
-// Margin line shown across all months
 export default function AdvisoryChart({ data }: Props) {
   const chartData = data.map(d => ({
     ...d,
@@ -47,8 +46,6 @@ export default function AdvisoryChart({ data }: Props) {
     confirmedBar: d.isPast ? d.confirmed : 0,
     expectedBar:  !d.isPast ? d.expected  : 0,
     pipelineBar:  !d.isPast ? d.potential : 0,
-    // Margin only meaningful for past months
-    marginLine: d.isPast ? d.margin : null,
   }));
 
   return (
@@ -72,12 +69,8 @@ export default function AdvisoryChart({ data }: Props) {
             Pipeline (future)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-6 h-0.5 inline-block bg-[#212122]" style={{ borderTop: '2px dashed #212122' }} />
+            <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #212122' }} />
             Target
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-6 h-0.5 inline-block bg-[#dd6945]" />
-            Margin
           </span>
         </div>
       </div>
@@ -116,13 +109,6 @@ export default function AdvisoryChart({ data }: Props) {
             dot={{ fill: '#212122', r: 3 }} strokeDasharray="6 3"
           />
 
-          {/* Margin line — past months only */}
-          <Line
-            type="monotone" dataKey="marginLine" name="Margin"
-            stroke="#dd6945" strokeWidth={2}
-            dot={{ fill: '#dd6945', r: 3 }}
-            connectNulls={false}
-          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

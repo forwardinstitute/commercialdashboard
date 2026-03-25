@@ -64,63 +64,40 @@ export default async function AdvisoryPage() {
         ) : (
           <>
             {/* Headline scorecards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Income YTD vs Target */}
-              <div className="fi-card md:col-span-2">
-                <p className="text-xs font-[Geist] uppercase tracking-widest text-[#8a7a6a] mb-3">
-                  Income Year to Date
-                </p>
-                <div className="flex items-end gap-10 mb-4">
-                  <div>
-                    <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Confirmed</p>
-                    <p className="text-4xl font-bold text-[#212122]"
-                       style={{ fontFamily: 'Inria Serif, serif' }}>
-                      {fmt(data.ytdConfirmed)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Target</p>
-                    <p className="text-4xl font-bold text-[#212122]"
-                       style={{ fontFamily: 'Inria Serif, serif' }}>
-                      {fmt(data.ytdTarget)}
-                    </p>
-                  </div>
+            <div className="fi-card">
+              <p className="text-xs font-[Geist] uppercase tracking-widest text-[#8a7a6a] mb-3">
+                Income Year to Date
+              </p>
+              <div className="flex items-end gap-10 mb-4">
+                <div>
+                  <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Confirmed</p>
+                  <p className="text-4xl font-bold text-[#212122]"
+                     style={{ fontFamily: 'Inria Serif, serif' }}>
+                    {fmt(data.ytdConfirmed)}
+                  </p>
                 </div>
-                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-[Geist] ${
-                  data.variance >= 0
-                    ? 'bg-[#e8f5f0] text-[#195e47]'
-                    : 'bg-[#fdf0ec] text-[#dd6945]'
-                }`}>
-                  <span>{data.variance >= 0 ? '▲' : '▼'}</span>
-                  <span>
-                    {data.variance >= 0 ? '+' : ''}{fmt(data.variance)}
-                    {' '}({data.variance >= 0 ? 'ahead' : 'behind'})
-                  </span>
-                  {data.ytdTarget > 0 && (
-                    <span className="opacity-70">
-                      · {Math.round((data.ytdConfirmed / data.ytdTarget) * 100)}% of target
-                    </span>
-                  )}
+                <div>
+                  <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Target</p>
+                  <p className="text-4xl font-bold text-[#212122]"
+                     style={{ fontFamily: 'Inria Serif, serif' }}>
+                    {fmt(data.ytdTarget)}
+                  </p>
                 </div>
               </div>
-
-              {/* Margin YTD */}
-              <div className="fi-card">
-                <p className="text-xs font-[Geist] uppercase tracking-widest text-[#8a7a6a] mb-3">
-                  Margin YTD
-                </p>
-                <p className="text-3xl font-bold text-[#212122] mb-1"
-                   style={{ fontFamily: 'Inria Serif, serif' }}>
-                  {fmt(data.ytdMargin)}
-                </p>
-                <p className="text-sm text-[#8a7a6a] font-[Geist]">
-                  Costs: {fmt(data.ytdCosts)}
-                </p>
-                {data.ytdConfirmed > 0 && (
-                  <p className="text-sm font-medium mt-2 font-[Geist]"
-                     style={{ color: data.ytdMargin >= 0 ? '#195e47' : '#dd6945' }}>
-                    {Math.round((data.ytdMargin / data.ytdConfirmed) * 100)}% margin
-                  </p>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium font-[Geist] ${
+                data.variance >= 0
+                  ? 'bg-[#e8f5f0] text-[#195e47]'
+                  : 'bg-[#fdf0ec] text-[#dd6945]'
+              }`}>
+                <span>{data.variance >= 0 ? '▲' : '▼'}</span>
+                <span>
+                  {data.variance >= 0 ? '+' : ''}{fmt(data.variance)}
+                  {' '}({data.variance >= 0 ? 'ahead' : 'behind'})
+                </span>
+                {data.ytdTarget > 0 && (
+                  <span className="opacity-70">
+                    · {Math.round((data.ytdConfirmed / data.ytdTarget) * 100)}% of target
+                  </span>
                 )}
               </div>
             </div>
