@@ -62,14 +62,8 @@ function monthlySlice(opp: AdvisoryOpportunity): number {
   return opp.Amount / months;
 }
 
-// Stage classification:
-// 'Confirmed' = work is committed and being delivered
-// High probability (>=75) = expected
-// Everything else active = pipeline
-function classifyOpp(opp: AdvisoryOpportunity): 'confirmed' | 'expected' | 'potential' {
-  if (opp.StageName === 'Confirmed') return 'confirmed';
-  if ((opp.Probability ?? 0) >= 75)  return 'expected';
-  return 'potential';
+function isConfirmedStage(opp: AdvisoryOpportunity): boolean {
+  return opp.StageName === 'Confirmed';
 }
 
 export async function buildAdvisoryData(): Promise<AdvisoryData> {
@@ -101,10 +95,15 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     for (const opp of opps) {
       if (!oppCoversMonth(opp, year, month)) continue;
       const slice = monthlySlice(opp);
-      const type  = classifyOpp(opp);
-      if (type === 'confirmed')  confirmed += slice;
-      else if (type === 'expected') expected  += slice;
-      else                          potential += slice;
+      if (isConfirmedStage(opp)) {
+        confirmed += slice;
+      } else {
+        // Probability-weight the open pipeline:
+        // expected = slice × probability%; potential = the remaining upside
+        const prob = (opp.Probability ?? 0) / 100;
+        expected  += slice * prob;
+        potential += slice * (1 - prob);
+      }
     }
 
     return {
