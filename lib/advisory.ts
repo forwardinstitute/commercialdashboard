@@ -4,7 +4,11 @@ import { AdvisoryData, MonthlyData, ProgrammeFinanceRecord } from '@/types';
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const ADVISORY_TYPE = 'Advisory Practice';
+// All advisory programmes have a Programme name containing 'Advisory Practice'
+// (e.g. 'Advisory Practice 2026'). Use substring match so all years are caught.
+function isAdvisory(r: ProgrammeFinanceRecord): boolean {
+  return (r.Programme__r?.Name ?? '').includes('Advisory Practice');
+}
 
 function isOnOrBeforeCurrentMonth(dateStr: string, today: Date): boolean {
   const d = new Date(dateStr);
@@ -55,7 +59,7 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
   const records = await getProgrammeFinanceRecords();
   const today   = new Date();
 
-  const advisoryRecords = records.filter(r => r.Type__c === ADVISORY_TYPE);
+  const advisoryRecords = records.filter(r => isAdvisory(r));
   const ytdRecords      = advisoryRecords.filter(r =>
     isOnOrBeforeCurrentMonth(r.Recruitment_Target_Month__c, today)
   );

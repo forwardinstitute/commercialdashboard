@@ -4,7 +4,11 @@ import { DashboardData, MonthlyData, ProgrammeFinanceRecord, ProgrammeGroup } fr
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const ADVISORY_TYPE = 'Advisory Practice';
+// All advisory programmes have a Programme name containing 'Advisory Practice'
+// (e.g. 'Advisory Practice 2026'). Use substring match so all years are caught.
+function isAdvisory(r: ProgrammeFinanceRecord): boolean {
+  return (r.Programme__r?.Name ?? '').includes('Advisory Practice');
+}
 
 // Compare by year+month only — records use end-of-month dates (e.g. 2026-03-31)
 // so a strict date comparison would exclude the current month until it ends.
@@ -106,8 +110,8 @@ export async function buildDashboardData(): Promise<DashboardData> {
   const records = await getProgrammeFinanceRecords();
   const today = new Date();
 
-  const advisoryRecords  = records.filter(r => r.Type__c === ADVISORY_TYPE);
-  const programmeRecords = records.filter(r => r.Type__c !== ADVISORY_TYPE);
+  const advisoryRecords  = records.filter(r => isAdvisory(r));
+  const programmeRecords = records.filter(r => !isAdvisory(r));
 
   const advisoryYtd  = advisoryRecords.filter(r =>
     isOnOrBeforeCurrentMonth(r.Recruitment_Target_Month__c, today)
