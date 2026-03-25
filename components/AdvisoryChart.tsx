@@ -38,12 +38,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-// For past months show confirmed income; for future show pipeline (expected + potential)
+// Confirmed shows for ALL months — a confirmed opp running Jan–Apr contributes
+// its monthly slice to March and April regardless of whether that month is past or future.
+// Expected and pipeline only show for future months (alongside any confirmed income).
 export default function AdvisoryChart({ data }: Props) {
   const chartData = data.map(d => ({
     ...d,
-    // Past: show confirmed. Future: show expected and potential bars instead
-    confirmedBar: d.isPast ? d.confirmed : 0,
+    confirmedBar: d.confirmed,
     expectedBar:  !d.isPast ? d.expected  : 0,
     pipelineBar:  !d.isPast ? d.potential : 0,
   }));
@@ -58,7 +59,7 @@ export default function AdvisoryChart({ data }: Props) {
         <div className="flex items-center gap-4 text-xs font-[Geist] text-[#8a7a6a]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm inline-block bg-[#195e47]" />
-            Confirmed (past)
+            Confirmed
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" />
@@ -90,7 +91,7 @@ export default function AdvisoryChart({ data }: Props) {
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* Past months: confirmed income */}
+          {/* Confirmed income — all months */}
           <Bar dataKey="confirmedBar" name="Confirmed" fill="#195e47"
                radius={[4, 4, 0, 0]} maxBarSize={40} />
 
