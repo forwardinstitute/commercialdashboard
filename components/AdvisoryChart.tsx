@@ -29,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {payload.map((p: any) => (
         p.value !== null && p.value !== 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.color === '#212122' ? '#195e47' : p.color }}>{p.name}</span>
+            <span style={{ color: p.color }}>{p.name}</span>
             <span className="font-medium text-[#212122]">{fmtFull(p.value)}</span>
           </p>
         )
@@ -70,7 +70,7 @@ export default function AdvisoryChart({ data }: Props) {
             Pipeline (future)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #212122' }} />
+            <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
             Target
           </span>
         </div>
@@ -106,8 +106,8 @@ export default function AdvisoryChart({ data }: Props) {
           {/* Target line — full year */}
           <Line
             type="monotone" dataKey="target" name="Target"
-            stroke="#212122" strokeWidth={2}
-            dot={{ fill: '#212122', r: 3 }} strokeDasharray="6 3"
+            stroke="#dd6945" strokeWidth={2}
+            dot={{ fill: '#dd6945', r: 3 }} strokeDasharray="6 3"
           />
 
         </ComposedChart>
