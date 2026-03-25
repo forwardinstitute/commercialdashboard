@@ -28,6 +28,18 @@ export interface MonthlyData {
   isPast: boolean;
 }
 
+export interface AdvisoryOpportunity {
+  Id: string;
+  Name: string;
+  Amount: number | null;
+  StageName: string;
+  Probability: number | null;
+  Start_Date_All__c: string | null;   // e.g. "2025-10-01"
+  End_DateAll__c: string | null;       // e.g. "2026-09-30"
+  Number_of_Months__c: number | null; // pre-calculated duration in months
+  Programme__r?: { Name: string };
+}
+
 export interface AdvisoryData {
   ytdConfirmed: number;
   ytdTarget: number;

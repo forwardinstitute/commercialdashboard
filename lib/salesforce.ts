@@ -1,4 +1,4 @@
-import { ProgrammeFinanceRecord } from '@/types';
+import { AdvisoryOpportunity, ProgrammeFinanceRecord } from '@/types';
 
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
@@ -77,4 +77,25 @@ export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceReco
     ORDER BY Recruitment_Target_Month__c ASC
   `;
   return query<ProgrammeFinanceRecord>(soql);
+}
+
+export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]> {
+  // Fetch all Advisory opportunities that overlap with FY 2026/27 (Mar 2026 – Feb 2027).
+  // We exclude lost opps. Confirmed income is prorated: Amount / Number_of_Months__c
+  // per month the opportunity runs, bypassing the unreliable flow-triggered finance records.
+  const soql = `
+    SELECT Id, Name, Amount, StageName, Probability,
+           Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
+           Programme__r.Name
+    FROM Opportunity
+    WHERE Programme__r.Name LIKE '%Advisory Practice%'
+      AND StageName != 'Opportunity lost'
+      AND Amount != null
+      AND Start_Date_All__c != null
+      AND End_DateAll__c != null
+      AND Start_Date_All__c <= 2027-02-28
+      AND End_DateAll__c >= 2026-03-01
+    ORDER BY Start_Date_All__c ASC
+  `;
+  return query<AdvisoryOpportunity>(soql);
 }
