@@ -43,6 +43,7 @@ function aggregateByMonth(
         costs: 0,
         margin: 0,
         isPast: isOnOrBeforeCurrentMonth(key, today),
+        isCurrentMonth: d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth(),
       });
     }
 

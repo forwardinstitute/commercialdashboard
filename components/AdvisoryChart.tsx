@@ -102,10 +102,10 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
     ? data.find(d => d.monthDate === selectedMonthDate)
     : null;
 
-  // Opportunities active in the selected month, with their slice
+  // Confirmed opportunities active in the selected month, with their slice
   const monthOpps = selectedMonthDate
     ? opportunities
-        .filter(opp => coversMonth(opp, selectedMonthDate))
+        .filter(opp => coversMonth(opp, selectedMonthDate) && opp.StageName === 'Confirmed')
         .map(opp => ({ opp, slice: monthlySlice(opp) }))
         .filter(({ slice }) => slice > 0)
         .sort((a, b) => b.slice - a.slice)
@@ -243,9 +243,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                 {fullMonthLabel(selectedMonthData.monthDate)} breakdown
               </h3>
               <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
-                {fmtFull(selectedMonthData.confirmed)} confirmed
-                {selectedMonthData.expected > 0 && ` · ${fmtFull(selectedMonthData.expected)} expected`}
-                {selectedMonthData.potential > 0 && ` · ${fmtFull(selectedMonthData.potential)} pipeline`}
+                {fmtFull(selectedMonthData.confirmed)} confirmed income
               </p>
             </div>
             <div className="flex items-center gap-3">
