@@ -109,8 +109,10 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const chartData = data.map(d => ({
     ...d,
     confirmedBar: d.confirmed,
-    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
-    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
+    // Expected = probability-weighted income from open opps (slice × prob%)
+    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected   : 0,
+    // Pipeline = the remaining headroom above expected (slice × (1-prob%))
+    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential  : 0,
   }));
 
   const selectedMonthData = selection
@@ -128,7 +130,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             .filter(({ slice }) => slice > 0)
             .sort((a, b) => b.slice - a.slice);
         }
-        // expected or pipeline: open (non-confirmed, non-lost) opps
+        // Expected: probability-weighted amount per open opp
+        // Pipeline: headroom = full slice × (1 - prob%) — what you'd gain if each opp fully converts
         return active
           .filter(opp => opp.StageName !== 'Confirmed' && opp.StageName !== 'Opportunity lost')
           .map(opp => {
