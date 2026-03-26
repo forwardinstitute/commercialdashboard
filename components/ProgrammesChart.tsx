@@ -102,6 +102,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+// ── Custom x-axis tick — italicises pre-FY months ─────────────────────────────
+
+const CustomXTick = ({ x, y, payload, activeMonths }: any) => {
+  const month = activeMonths?.find((m: MonthlyData) => m.month === payload.value);
+  const isPreFY = month?.preFY;
+  return (
+    <text
+      x={x} y={y + 12}
+      textAnchor="middle"
+      fontSize={isPreFY ? 11 : 12}
+      fill={isPreFY ? '#b0a090' : '#8a7a6a'}
+      fontStyle={isPreFY ? 'italic' : 'normal'}
+      fontFamily="Geist, sans-serif"
+    >
+      {payload.value}
+    </text>
+  );
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ProgrammesChart({ data }: Props) {
@@ -172,7 +191,8 @@ export default function ProgrammesChart({ data }: Props) {
 
   // ── YTD aggregates ─────────────────────────────────────────────────────────
 
-  const ytdMonths    = activeMonths.filter(m => m.isPast);
+  // Pre-FY months (Jan/Feb) shown on chart but excluded from YTD totals
+  const ytdMonths    = activeMonths.filter(m => m.isPast && !m.preFY);
   const ytdConfirmed = ytdMonths.reduce((s, m) => s + m.confirmed, 0);
   const ytdTarget    = ytdMonths.reduce((s, m) => s + m.target,    0);
   const variance     = ytdConfirmed - ytdTarget;
@@ -553,7 +573,7 @@ export default function ProgrammesChart({ data }: Props) {
           <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
             <XAxis dataKey="month"
-              tick={{ fontSize: 12, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+              tick={<CustomXTick activeMonths={activeMonths} />}
               axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmt}
               tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
@@ -641,7 +661,7 @@ export default function ProgrammesChart({ data }: Props) {
               <div>
                 <h3 className="font-bold text-[#212122] text-base"
                     style={{ fontFamily: 'Inria Serif, serif' }}>
-                  Full year — {TYPE_LABELS[activeType]} · FY 2026/27
+                  Full year — {TYPE_LABELS[activeType]} · Jan 2026 – Feb 2027
                 </h3>
                 <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
                   {fmtFull(fyOpps.reduce((s, { slice }) => s + slice, 0))}{' '}

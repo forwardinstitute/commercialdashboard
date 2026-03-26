@@ -4,20 +4,24 @@ import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// FY 2026/27: March 2026 through February 2027 (month is 0-indexed)
+// Programmes often have longer recruitment periods that close in Jan/Feb
+// before the FY officially starts in March. We include those two months
+// so that income isn't invisible — targets will simply be zero for them.
 const FY_MONTHS = [
-  { year: 2026, month: 2 },  // March
-  { year: 2026, month: 3 },  // April
-  { year: 2026, month: 4 },  // May
-  { year: 2026, month: 5 },  // June
-  { year: 2026, month: 6 },  // July
-  { year: 2026, month: 7 },  // August
-  { year: 2026, month: 8 },  // September
-  { year: 2026, month: 9 },  // October
-  { year: 2026, month: 10 }, // November
-  { year: 2026, month: 11 }, // December
-  { year: 2027, month: 0 },  // January
-  { year: 2027, month: 1 },  // February
+  { year: 2026, month: 0, preFY: true  },  // January (pre-FY)
+  { year: 2026, month: 1, preFY: true  },  // February (pre-FY)
+  { year: 2026, month: 2, preFY: false },  // March
+  { year: 2026, month: 3, preFY: false },  // April
+  { year: 2026, month: 4, preFY: false },  // May
+  { year: 2026, month: 5, preFY: false },  // June
+  { year: 2026, month: 6, preFY: false },  // July
+  { year: 2026, month: 7, preFY: false },  // August
+  { year: 2026, month: 8, preFY: false },  // September
+  { year: 2026, month: 9, preFY: false },  // October
+  { year: 2026, month: 10, preFY: false }, // November
+  { year: 2026, month: 11, preFY: false }, // December
+  { year: 2027, month: 0, preFY: false },  // January
+  { year: 2027, month: 1, preFY: false },  // February
 ];
 
 function lastDayOf(year: number, month: number): Date {
@@ -92,7 +96,7 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
   }
 
   // ── Monthly data (all types combined) ────────────────────────────────────────
-  const months: MonthlyData[] = FY_MONTHS.map(({ year, month }, _idx) => {
+  const months: MonthlyData[] = FY_MONTHS.map(({ year, month, preFY }, _idx) => {
     const endIso        = monthEndIso(year, month);
     const isPast        = isCurrentOrPast(year, month, today);
     const isCurrentMonth = isThisMonth(year, month, today);
@@ -124,7 +128,7 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
     return {
       month:     MONTH_NAMES[month],
       monthDate: endIso,
-      target:    allTargets[endIso] ?? 0,
+      target:    preFY ? 0 : (allTargets[endIso] ?? 0),
       confirmed,
       expected,
       potential,
@@ -133,10 +137,12 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
       isPast,
       isCurrentMonth,
       confirmedLY,
+      preFY,
     };
   });
 
-  const ytdMonths    = months.filter(m => m.isPast);
+  // Pre-FY months (Jan/Feb) are visible on the chart but excluded from YTD totals
+  const ytdMonths    = months.filter(m => m.isPast && !m.preFY);
   const ytdConfirmed = ytdMonths.reduce((s, m) => s + m.confirmed, 0);
   const ytdTarget    = ytdMonths.reduce((s, m) => s + m.target,    0);
 

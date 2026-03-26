@@ -136,7 +136,7 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
     WHERE Programme__c != null
       AND StageName != 'Opportunity lost'
       AND Amount != null
-      AND CloseDate >= 2026-03-01
+      AND CloseDate >= 2026-01-01
       AND CloseDate <= 2027-02-28
     ORDER BY CloseDate ASC
   `;
@@ -155,7 +155,7 @@ export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunit
     WHERE Programme__c != null
       AND StageName = 'Confirmed'
       AND Amount != null
-      AND CloseDate >= 2025-03-01
+      AND CloseDate >= 2025-01-01
       AND CloseDate <= 2026-02-28
     ORDER BY CloseDate ASC
   `;

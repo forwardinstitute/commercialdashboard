@@ -28,6 +28,7 @@ export interface MonthlyData {
   isPast: boolean;
   isCurrentMonth: boolean;
   confirmedLY?: number;  // Confirmed income in the same month last FY (optional)
+  preFY?: boolean;       // Jan/Feb before FY starts — no targets, excluded from YTD
 }
 
 export interface AdvisoryOpportunity {
