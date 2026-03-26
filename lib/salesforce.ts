@@ -123,7 +123,8 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
 
 // ─── Programmes ───────────────────────────────────────────────────────────────
 
-// All non-Advisory programme opportunities closing in FY 2026/27 (Mar 2026 – Feb 2027).
+// All programme opportunities closing in FY 2026/27 (Mar 2026 – Feb 2027).
+// Advisory Practice opps are excluded in code (NOT LIKE is invalid SOQL).
 // Income lands in the month of CloseDate (not prorated).
 export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[]> {
   const soql = `
@@ -133,7 +134,6 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__c != null
-      AND Programme__r.Name NOT LIKE '%Advisory Practice%'
       AND StageName != 'Opportunity lost'
       AND Amount != null
       AND CloseDate >= 2026-03-01
@@ -144,6 +144,7 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
 }
 
 // Confirmed programme opportunities from last FY (Mar 2025 – Feb 2026) for LY comparison.
+// Advisory Practice opps are excluded in code (NOT LIKE is invalid SOQL).
 export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunity[]> {
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
@@ -152,7 +153,6 @@ export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunit
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__c != null
-      AND Programme__r.Name NOT LIKE '%Advisory Practice%'
       AND StageName = 'Confirmed'
       AND Amount != null
       AND CloseDate >= 2025-03-01

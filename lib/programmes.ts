@@ -54,11 +54,15 @@ function closesInMonth(opp: ProgrammeOpportunity, year: number, month: number): 
 }
 
 export async function buildProgrammesData(): Promise<ProgrammesData> {
-  const [opps, oppsLY, financeRecords] = await Promise.all([
+  const [rawOpps, rawOppsLY, financeRecords] = await Promise.all([
     getProgrammeOpportunities(),
     getProgrammeOpportunitiesLY(),
     getProgrammeFinanceRecords(),
   ]);
+
+  // Exclude Advisory Practice opps — NOT LIKE is invalid SOQL so we filter here
+  const opps   = rawOpps.filter(o => !(o.Programme__r?.Name ?? '').includes('Advisory Practice'));
+  const oppsLY = rawOppsLY.filter(o => !(o.Programme__r?.Name ?? '').includes('Advisory Practice'));
 
   const today = new Date();
 
