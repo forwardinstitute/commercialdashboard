@@ -79,6 +79,26 @@ export async function getProgrammeFinanceRecords(): Promise<ProgrammeFinanceReco
   return query<ProgrammeFinanceRecord>(soql);
 }
 
+// Last year's confirmed Advisory opps: FY 2025/26 (Mar 2025 – Feb 2026)
+export async function getAdvisoryOpportunitiesLY(): Promise<AdvisoryOpportunity[]> {
+  const soql = `
+    SELECT Id, Name, Amount, StageName, Probability,
+           Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
+           Organisation_Sector__c, Account.Name,
+           Programme__r.Name
+    FROM Opportunity
+    WHERE Programme__r.Name LIKE '%Advisory Practice%'
+      AND StageName = 'Confirmed'
+      AND Amount != null
+      AND Start_Date_All__c != null
+      AND End_DateAll__c != null
+      AND Start_Date_All__c <= 2026-02-28
+      AND End_DateAll__c >= 2025-03-01
+    ORDER BY Start_Date_All__c ASC
+  `;
+  return query<AdvisoryOpportunity>(soql);
+}
+
 export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]> {
   // Fetch all Advisory opportunities that overlap with FY 2026/27 (Mar 2026 – Feb 2027).
   // We exclude lost opps. Confirmed income is prorated: Amount / Number_of_Months__c

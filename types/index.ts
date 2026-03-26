@@ -27,6 +27,7 @@ export interface MonthlyData {
   margin: number;      // confirmed - costs
   isPast: boolean;
   isCurrentMonth: boolean;
+  confirmedLY?: number;  // Confirmed income in the same month last FY (optional)
 }
 
 export interface AdvisoryOpportunity {

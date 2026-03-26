@@ -105,6 +105,7 @@ const BAR_COLOURS: Record<BarType, string> = {
 export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
+  const [showLY, setShowLY]         = useState(false);
 
   const chartData = data.map(d => ({
     ...d,
@@ -206,6 +207,17 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
             Target
           </span>
+          <button
+            onClick={() => setShowLY(v => !v)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+              showLY
+                ? 'border-[#8a7a6a] bg-[#f5ebe0] text-[#212122]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px dotted #8a7a6a' }} />
+            Last year
+          </button>
         </div>
       </div>
 
@@ -261,6 +273,15 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             stroke="#dd6945" strokeWidth={2}
             dot={{ fill: '#dd6945', r: 3 }} strokeDasharray="6 3"
           />
+
+          {/* Last year confirmed — toggled */}
+          {showLY && (
+            <Line
+              type="monotone" dataKey="confirmedLY" name="Last year"
+              stroke="#8a7a6a" strokeWidth={1.5}
+              dot={false} strokeDasharray="3 3"
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
 

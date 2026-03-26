@@ -1,8 +1,24 @@
-import { getAdvisoryOpportunities, getProgrammeFinanceRecords } from '@/lib/salesforce';
+import { getAdvisoryOpportunities, getAdvisoryOpportunitiesLY, getProgrammeFinanceRecords } from '@/lib/salesforce';
 import { AdvisoryData, AdvisoryOpportunity, MonthlyData } from '@/types';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// FY 2025/26: March 2025 through February 2026 — last year's equivalent months (0-indexed)
+const LY_MONTHS = [
+  { year: 2025, month: 2 },  // March 2025
+  { year: 2025, month: 3 },  // April 2025
+  { year: 2025, month: 4 },  // May 2025
+  { year: 2025, month: 5 },  // June 2025
+  { year: 2025, month: 6 },  // July 2025
+  { year: 2025, month: 7 },  // August 2025
+  { year: 2025, month: 8 },  // September 2025
+  { year: 2025, month: 9 },  // October 2025
+  { year: 2025, month: 10 }, // November 2025
+  { year: 2025, month: 11 }, // December 2025
+  { year: 2026, month: 0 },  // January 2026
+  { year: 2026, month: 1 },  // February 2026
+];
 
 // FY 2026/27: March 2026 through February 2027 (month is 0-indexed)
 const FY_MONTHS = [
@@ -72,8 +88,9 @@ function isConfirmedStage(opp: AdvisoryOpportunity): boolean {
 }
 
 export async function buildAdvisoryData(): Promise<AdvisoryData> {
-  const [opps, financeRecords] = await Promise.all([
+  const [opps, oppsLY, financeRecords] = await Promise.all([
     getAdvisoryOpportunities(),
+    getAdvisoryOpportunitiesLY(),
     getProgrammeFinanceRecords(),
   ]);
 
@@ -88,8 +105,18 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     targetByMonth.set(key, (targetByMonth.get(key) ?? 0) + (r.Target_Amount__c ?? 0));
   }
 
+  // Build last year confirmed: prorate LY opps across their LY months, keyed by FY month index (0–11)
+  const confirmedLYByIndex: number[] = LY_MONTHS.map(({ year, month }) => {
+    let total = 0;
+    for (const opp of oppsLY) {
+      if (!oppCoversMonth(opp, year, month)) continue;
+      total += monthlySlice(opp);
+    }
+    return total;
+  });
+
   // Build monthly data by prorating each opportunity across the months it covers
-  const months: MonthlyData[] = FY_MONTHS.map(({ year, month }) => {
+  const months: MonthlyData[] = FY_MONTHS.map(({ year, month }, idx) => {
     const endIso        = monthEndIso(year, month);
     const isPast        = isCurrentOrPast(year, month, today);
     const isCurrentMonth = isThisMonth(year, month, today);
@@ -123,6 +150,7 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       margin: 0,
       isPast,
       isCurrentMonth,
+      confirmedLY: confirmedLYByIndex[idx] ?? 0,
     };
   });
 
