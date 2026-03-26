@@ -66,8 +66,20 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
   ]);
 
   // Exclude Advisory Practice opps — NOT LIKE is invalid SOQL so we filter here
-  const opps   = rawOpps.filter(o => !(o.Programme__r?.Name ?? '').includes('Advisory Practice'));
-  const oppsLY = rawOppsLY.filter(o => !(o.Programme__r?.Name ?? '').includes('Advisory Practice'));
+  // Also exclude old fellowship cohorts (e.g. Fellowship Programme 2025) from the current
+  // year view — the pre-FY Jan/Feb window is for early-closing *current* programme opps,
+  // not last year's late stragglers. LY opps keep all fellowships for the LY comparison line.
+  const isOldFellowship = (o: ProgrammeOpportunity) => {
+    const name = (o.Programme__r?.Name ?? '').toLowerCase();
+    return name.includes('fellowship') && !name.includes('fellowship programme 2026');
+  };
+
+  const opps = rawOpps.filter(o =>
+    !(o.Programme__r?.Name ?? '').includes('Advisory Practice') && !isOldFellowship(o)
+  );
+  const oppsLY = rawOppsLY.filter(o =>
+    !(o.Programme__r?.Name ?? '').includes('Advisory Practice')
+  );
 
   const today = new Date();
 
