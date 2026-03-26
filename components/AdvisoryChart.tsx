@@ -12,9 +12,15 @@ interface Props {
   opportunities: AdvisoryOpportunity[];
 }
 
+type BarType = 'confirmed' | 'expected' | 'pipeline';
+
+interface Selection {
+  monthDate: string;
+  barType: BarType;
+}
+
 // Full month + year label from a monthDate string e.g. "2026-03-31" → "March 2026"
 function fullMonthLabel(monthDate: string): string {
-  // Parse as noon UTC to avoid timezone-flipping the day
   const d = new Date(monthDate.slice(0, 7) + '-15');
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
@@ -32,7 +38,6 @@ const fmtFull = (n: number) =>
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  // payload[0].payload has the full MonthlyData including monthDate
   const monthDate: string | undefined = payload[0]?.payload?.monthDate;
   const displayLabel = monthDate ? fullMonthLabel(monthDate) : label;
   return (
@@ -41,17 +46,16 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {payload.map((p: any) => (
         p.value !== null && p.value !== 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.color }}>{p.name}</span>
+            <span style={{ color: p.fill ?? p.color }}>{p.name}</span>
             <span className="font-medium text-[#212122]">{fmtFull(p.value)}</span>
           </p>
         )
       ))}
-      <p className="text-[#8a7a6a] text-xs mt-2">Click bar to drill down</p>
+      <p className="text-[#8a7a6a] text-xs mt-2">Click a bar to drill down</p>
     </div>
   );
 };
 
-// Does this opportunity cover the given month (identified by its end-of-month ISO date)?
 function coversMonth(opp: AdvisoryOpportunity, monthDate: string): boolean {
   if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return false;
   const d = new Date(monthDate);
@@ -86,29 +90,58 @@ function sectorColour(sector: string): string {
   return SECTOR_COLOURS[sector] ?? '#8a7a6a';
 }
 
+const BAR_LABELS: Record<BarType, string> = {
+  confirmed: 'Confirmed',
+  expected:  'Expected',
+  pipeline:  'Pipeline',
+};
+
+const BAR_COLOURS: Record<BarType, string> = {
+  confirmed: '#195e47',
+  expected:  '#85d1e3',
+  pipeline:  '#ffcc12',
+};
+
 export default function AdvisoryChart({ data, opportunities }: Props) {
-  const [selectedMonthDate, setSelectedMonthDate] = useState<string | null>(null);
-  const [drillTab, setDrillTab] = useState<'projects' | 'sectors'>('projects');
+  const [selection, setSelection]   = useState<Selection | null>(null);
+  const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
 
   const chartData = data.map(d => ({
     ...d,
     confirmedBar: d.confirmed,
-    // Show expected/pipeline for future months AND the current month (opps still open)
     expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
     pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
   }));
 
-  const selectedMonthData = selectedMonthDate
-    ? data.find(d => d.monthDate === selectedMonthDate)
+  const selectedMonthData = selection
+    ? data.find(d => d.monthDate === selection.monthDate)
     : null;
 
-  // Confirmed opportunities active in the selected month, with their slice
-  const monthOpps = selectedMonthDate
-    ? opportunities
-        .filter(opp => coversMonth(opp, selectedMonthDate) && opp.StageName === 'Confirmed')
-        .map(opp => ({ opp, slice: monthlySlice(opp) }))
-        .filter(({ slice }) => slice > 0)
-        .sort((a, b) => b.slice - a.slice)
+  // Filter opportunities by bar type
+  const monthOpps = selection
+    ? (() => {
+        const active = opportunities.filter(opp => coversMonth(opp, selection.monthDate));
+        if (selection.barType === 'confirmed') {
+          return active
+            .filter(opp => opp.StageName === 'Confirmed')
+            .map(opp => ({ opp, slice: monthlySlice(opp) }))
+            .filter(({ slice }) => slice > 0)
+            .sort((a, b) => b.slice - a.slice);
+        }
+        // expected or pipeline: open (non-confirmed, non-lost) opps
+        return active
+          .filter(opp => opp.StageName !== 'Confirmed' && opp.StageName !== 'Opportunity lost')
+          .map(opp => {
+            const full = monthlySlice(opp);
+            const prob = (opp.Probability ?? 0) / 100;
+            const slice = selection.barType === 'expected'
+              ? full * prob
+              : full * (1 - prob);
+            return { opp, slice };
+          })
+          .filter(({ slice }) => slice > 0)
+          .sort((a, b) => b.slice - a.slice);
+      })()
     : [];
 
   // Group by Organisation → Projects
@@ -132,13 +165,18 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const sectorEntries = Object.entries(bySector).sort((a, b) => b[1] - a[1]);
   const sectorTotal   = sectorEntries.reduce((s, [, v]) => s + v, 0);
 
-  const handleBarClick = (barData: any) => {
+  // Each bar gets its own click handler that records the bar type
+  const makeClickHandler = (barType: BarType) => (barData: any) => {
     if (!barData?.monthDate) return;
-    setSelectedMonthDate(prev =>
-      prev === barData.monthDate ? null : barData.monthDate
+    setSelection(prev =>
+      prev?.monthDate === barData.monthDate && prev?.barType === barType
+        ? null
+        : { monthDate: barData.monthDate, barType }
     );
     setDrillTab('projects');
   };
+
+  const isSelected = (monthDate: string) => selection?.monthDate === monthDate;
 
   return (
     <div className="fi-card">
@@ -168,7 +206,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart — grouped (not stacked) bars */}
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
@@ -184,42 +222,33 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           />
           <Tooltip content={<CustomTooltip />} />
 
-          {/* Confirmed — all months */}
-          <Bar dataKey="confirmedBar" name="Confirmed" stackId="income"
-               radius={[0, 0, 0, 0]} maxBarSize={40}
-               onClick={handleBarClick} style={{ cursor: 'pointer' }}>
+          {/* Confirmed */}
+          <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16}
+               radius={[4, 4, 0, 0]}
+               onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
             {chartData.map((entry) => (
-              <Cell
-                key={entry.monthDate}
-                fill="#195e47"
-                opacity={selectedMonthDate && selectedMonthDate !== entry.monthDate ? 0.4 : 1}
-              />
+              <Cell key={entry.monthDate} fill="#195e47"
+                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
             ))}
           </Bar>
 
-          {/* Expected — future months */}
-          <Bar dataKey="expectedBar" name="Expected" stackId="income"
-               radius={[0, 0, 0, 0]} maxBarSize={40}
-               onClick={handleBarClick} style={{ cursor: 'pointer' }}>
+          {/* Expected */}
+          <Bar dataKey="expectedBar" name="Expected" maxBarSize={16}
+               radius={[4, 4, 0, 0]}
+               onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
             {chartData.map((entry) => (
-              <Cell
-                key={entry.monthDate}
-                fill="#85d1e3"
-                opacity={selectedMonthDate && selectedMonthDate !== entry.monthDate ? 0.4 : 1}
-              />
+              <Cell key={entry.monthDate} fill="#85d1e3"
+                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
             ))}
           </Bar>
 
-          {/* Pipeline — future months */}
-          <Bar dataKey="pipelineBar" name="Pipeline" stackId="income"
-               radius={[4, 4, 0, 0]} maxBarSize={40}
-               onClick={handleBarClick} style={{ cursor: 'pointer' }}>
+          {/* Pipeline */}
+          <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16}
+               radius={[4, 4, 0, 0]}
+               onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
             {chartData.map((entry) => (
-              <Cell
-                key={entry.monthDate}
-                fill="#ffcc12"
-                opacity={selectedMonthDate && selectedMonthDate !== entry.monthDate ? 0.35 : 0.7}
-              />
+              <Cell key={entry.monthDate} fill="#ffcc12"
+                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
             ))}
           </Bar>
 
@@ -233,21 +262,41 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
       </ResponsiveContainer>
 
       {/* Drill-down panel */}
-      {selectedMonthDate && selectedMonthData && (
+      {selection && selectedMonthData && (
         <div className="mt-6 border-t border-[#e8ddd0] pt-6">
           {/* Panel header */}
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-bold text-[#212122] text-base"
                   style={{ fontFamily: 'Inria Serif, serif' }}>
-                {fullMonthLabel(selectedMonthData.monthDate)} breakdown
+                {fullMonthLabel(selectedMonthData.monthDate)} — {BAR_LABELS[selection.barType]}
               </h3>
               <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
-                {fmtFull(selectedMonthData.confirmed)} confirmed income
+                {fmtFull(monthOpps.reduce((s, { slice }) => s + slice, 0))}{' '}
+                {BAR_LABELS[selection.barType].toLowerCase()} income
               </p>
             </div>
+
             <div className="flex items-center gap-3">
-              {/* Tab toggle */}
+              {/* Bar type switcher */}
+              <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
+                {(['confirmed', 'expected', 'pipeline'] as BarType[]).map(bt => (
+                  <button
+                    key={bt}
+                    onClick={() => setSelection(s => s ? { ...s, barType: bt } : null)}
+                    className="px-3 py-1.5 capitalize transition-colors"
+                    style={
+                      selection.barType === bt
+                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'pipeline' ? '#212122' : '#fcf2e3' }
+                        : { color: '#8a7a6a' }
+                    }
+                  >
+                    {BAR_LABELS[bt]}
+                  </button>
+                ))}
+              </div>
+
+              {/* View toggle */}
               <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
                 <button
                   onClick={() => setDrillTab('projects')}
@@ -262,8 +311,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                   By Sector
                 </button>
               </div>
+
               <button
-                onClick={() => setSelectedMonthDate(null)}
+                onClick={() => setSelection(null)}
                 className="text-[#8a7a6a] hover:text-[#212122] text-lg leading-none"
                 aria-label="Close"
               >
@@ -276,16 +326,14 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           {drillTab === 'projects' && (
             <div className="space-y-3">
               {orgEntries.length === 0 && (
-                <p className="text-sm text-[#8a7a6a] font-[Geist]">No opportunities found for this month.</p>
+                <p className="text-sm text-[#8a7a6a] font-[Geist]">No opportunities found for this selection.</p>
               )}
               {orgEntries.map(([org, { total, projects }]) => (
                 <div key={org} className="rounded-lg border border-[#e8ddd0] overflow-hidden">
-                  {/* Org header */}
                   <div className="flex items-center justify-between px-4 py-2.5 bg-[#f5ebe0]">
                     <span className="font-medium text-sm text-[#212122] font-[Geist]">{org}</span>
                     <span className="text-sm font-bold text-[#212122] font-[Geist]">{fmtFull(total)}</span>
                   </div>
-                  {/* Projects */}
                   {projects.map(({ opp, slice }) => (
                     <div key={opp.Id}
                          className="flex items-center justify-between px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist]">
