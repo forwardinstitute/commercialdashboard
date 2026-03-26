@@ -37,7 +37,7 @@ export interface AdvisoryOpportunity {
   Start_Date_All__c: string | null;
   End_DateAll__c: string | null;
   Number_of_Months__c: number | null;
-  Sector__c: string | null;
+  Organisation_Sector__c: string | null;
   Account?: { Name: string };
   Programme__r?: { Name: string };
 }

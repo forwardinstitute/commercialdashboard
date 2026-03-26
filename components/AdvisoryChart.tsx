@@ -59,7 +59,7 @@ function monthlySlice(opp: AdvisoryOpportunity): number {
 }
 
 function oppSector(opp: AdvisoryOpportunity): string {
-  return opp.Sector__c || 'Unknown';
+  return opp.Organisation_Sector__c || 'Unknown';
 }
 
 function oppOrg(opp: AdvisoryOpportunity): string {

@@ -5,12 +5,14 @@ import AdvisoryChart from '@/components/AdvisoryChart';
 import { buildAdvisoryData } from '@/lib/advisory';
 import { AdvisoryData } from '@/types';
 
-async function getData(): Promise<AdvisoryData | null> {
+async function getData(): Promise<{ data: AdvisoryData | null; error: string | null }> {
   try {
-    return await buildAdvisoryData();
+    const data = await buildAdvisoryData();
+    return { data, error: null };
   } catch (e) {
-    console.error('Advisory data error:', e);
-    return null;
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('Advisory data error:', msg);
+    return { data: null, error: msg };
   }
 }
 
@@ -30,7 +32,7 @@ function fmtDate(iso: string) {
 }
 
 export default async function AdvisoryPage() {
-  const data = await getData();
+  const { data, error } = await getData();
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
@@ -56,10 +58,13 @@ export default async function AdvisoryPage() {
         </div>
 
         {!data ? (
-          <div className="fi-card text-center py-16">
-            <p className="text-[#8a7a6a] font-[Geist]">
-              Unable to load advisory data. Check your Salesforce connection.
-            </p>
+          <div className="fi-card py-8">
+            <p className="text-[#dd6945] font-bold font-[Geist] mb-2">Unable to load advisory data</p>
+            {error && (
+              <pre className="text-xs text-[#8a7a6a] font-[Geist] whitespace-pre-wrap break-all bg-[#f5ebe0] rounded-lg p-4 mt-2">
+                {error}
+              </pre>
+            )}
           </div>
         ) : (
           <>
