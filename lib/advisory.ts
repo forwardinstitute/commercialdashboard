@@ -35,6 +35,11 @@ function isCurrentOrPast(year: number, month: number, today: Date): boolean {
   return year * 100 + month <= today.getFullYear() * 100 + today.getMonth();
 }
 
+// Is this exactly the current calendar month?
+function isThisMonth(year: number, month: number, today: Date): boolean {
+  return year === today.getFullYear() && month === today.getMonth();
+}
+
 // Does this opportunity run during the given calendar month?
 function oppCoversMonth(opp: AdvisoryOpportunity, year: number, month: number): boolean {
   if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return false;
@@ -85,8 +90,9 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
 
   // Build monthly data by prorating each opportunity across the months it covers
   const months: MonthlyData[] = FY_MONTHS.map(({ year, month }) => {
-    const endIso = monthEndIso(year, month);
-    const isPast = isCurrentOrPast(year, month, today);
+    const endIso        = monthEndIso(year, month);
+    const isPast        = isCurrentOrPast(year, month, today);
+    const isCurrentMonth = isThisMonth(year, month, today);
 
     let confirmed = 0;
     let expected  = 0;
@@ -116,6 +122,7 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       costs:  0,
       margin: 0,
       isPast,
+      isCurrentMonth,
     };
   });
 

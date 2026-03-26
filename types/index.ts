@@ -26,6 +26,7 @@ export interface MonthlyData {
   costs: number;
   margin: number;      // confirmed - costs
   isPast: boolean;
+  isCurrentMonth: boolean;
 }
 
 export interface AdvisoryOpportunity {

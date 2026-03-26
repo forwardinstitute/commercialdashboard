@@ -12,6 +12,13 @@ interface Props {
   opportunities: AdvisoryOpportunity[];
 }
 
+// Full month + year label from a monthDate string e.g. "2026-03-31" → "March 2026"
+function fullMonthLabel(monthDate: string): string {
+  // Parse as noon UTC to avoid timezone-flipping the day
+  const d = new Date(monthDate.slice(0, 7) + '-15');
+  return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-GB', {
     style: 'currency', currency: 'GBP',
@@ -25,9 +32,12 @@ const fmtFull = (n: number) =>
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
+  // payload[0].payload has the full MonthlyData including monthDate
+  const monthDate: string | undefined = payload[0]?.payload?.monthDate;
+  const displayLabel = monthDate ? fullMonthLabel(monthDate) : label;
   return (
     <div className="bg-white border border-[#e8ddd0] text-[#212122] rounded-xl p-3 text-sm shadow-lg min-w-[180px]">
-      <p className="font-bold mb-2 text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{label}</p>
+      <p className="font-bold mb-2 text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{displayLabel}</p>
       {payload.map((p: any) => (
         p.value !== null && p.value !== 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
@@ -83,8 +93,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const chartData = data.map(d => ({
     ...d,
     confirmedBar: d.confirmed,
-    expectedBar:  !d.isPast ? d.expected  : 0,
-    pipelineBar:  !d.isPast ? d.potential : 0,
+    // Show expected/pipeline for future months AND the current month (opps still open)
+    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
+    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
   }));
 
   const selectedMonthData = selectedMonthDate
@@ -229,7 +240,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             <div>
               <h3 className="font-bold text-[#212122] text-base"
                   style={{ fontFamily: 'Inria Serif, serif' }}>
-                {selectedMonthData.month} breakdown
+                {fullMonthLabel(selectedMonthData.monthDate)} breakdown
               </h3>
               <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
                 {fmtFull(selectedMonthData.confirmed)} confirmed
