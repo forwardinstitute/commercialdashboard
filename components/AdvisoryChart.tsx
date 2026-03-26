@@ -105,8 +105,9 @@ const BAR_COLOURS: Record<BarType, string> = {
 export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
-  const [showLY, setShowLY]         = useState(false);
-  const [showFullYear, setShowFullYear] = useState(false);
+  const [showLY, setShowLY]               = useState(false);
+  const [showFullYear, setShowFullYear]   = useState(false);
+  const [showCumulative, setShowCumulative] = useState(false);
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
   const [fyBarType, setFyBarType]   = useState<BarType>('confirmed');
 
@@ -269,72 +270,111 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           >
             Full year
           </button>
+          <button
+            onClick={() => { setShowCumulative(v => !v); setSelection(null); setShowFullYear(false); }}
+            className={`px-2 py-1 rounded-md border transition-colors ${
+              showCumulative
+                ? 'border-[#212122] bg-[#212122] text-[#fcf2e3]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            Cumulative
+          </button>
         </div>
       </div>
 
-      {/* Chart — grouped (not stacked) bars */}
+      {/* Chart */}
       <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
-          <XAxis
-            dataKey="month"
-            tick={{ fontSize: 12, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
-            axisLine={false} tickLine={false}
-          />
-          <YAxis
-            tickFormatter={fmt}
-            tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
-            axisLine={false} tickLine={false} width={60}
-          />
-          <Tooltip content={<CustomTooltip />} />
-
-          {/* Confirmed */}
-          <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16}
-               radius={[4, 4, 0, 0]}
-               onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-            {chartData.map((entry) => (
-              <Cell key={entry.monthDate} fill="#195e47"
-                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-            ))}
-          </Bar>
-
-          {/* Expected */}
-          <Bar dataKey="expectedBar" name="Expected" maxBarSize={16}
-               radius={[4, 4, 0, 0]}
-               onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
-            {chartData.map((entry) => (
-              <Cell key={entry.monthDate} fill="#85d1e3"
-                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-            ))}
-          </Bar>
-
-          {/* Pipeline */}
-          <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16}
-               radius={[4, 4, 0, 0]}
-               onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
-            {chartData.map((entry) => (
-              <Cell key={entry.monthDate} fill="#ffcc12"
-                opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-            ))}
-          </Bar>
-
-          {/* Target line */}
-          <Line
-            type="monotone" dataKey="target" name="Target"
-            stroke="#dd6945" strokeWidth={2}
-            dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
-            strokeDasharray="6 3"
-          />
-
-          {/* Last year confirmed — toggled */}
-          {showLY && (
-            <Line
-              type="monotone" dataKey="confirmedLY" name="Last year"
-              stroke="#8a7a6a" strokeWidth={1.5}
-              dot={false} strokeDasharray="3 3"
+        {showCumulative ? (
+          <ComposedChart data={(() => {
+            let cumConfirmed = 0, cumTarget = 0, cumLY = 0;
+            return data.map(m => {
+              cumConfirmed += m.confirmed;
+              cumTarget    += m.target;
+              cumLY        += m.confirmedLY ?? 0;
+              return { ...m, cumConfirmed: m.isPast ? cumConfirmed : null, cumTarget, cumLY };
+            });
+          })()} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
+            <XAxis dataKey="month"
+              tick={{ fontSize: 12, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+              axisLine={false} tickLine={false} />
+            <YAxis tickFormatter={fmt}
+              tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+              axisLine={false} tickLine={false} width={60} />
+            <Tooltip content={<CustomTooltip />} />
+            <Line type="monotone" dataKey="cumTarget" name="Target"
+              stroke="#dd6945" strokeWidth={2}
+              dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+              strokeDasharray="6 3" />
+            <Line type="monotone" dataKey="cumConfirmed" name="Confirmed"
+              stroke="#195e47" strokeWidth={2.5}
+              dot={false} activeDot={{ r: 4, fill: '#195e47', strokeWidth: 0 }}
+              connectNulls={false} />
+            {showLY && (
+              <Line type="monotone" dataKey="cumLY" name="Last year"
+                stroke="#8a7a6a" strokeWidth={1.5}
+                dot={false} strokeDasharray="3 3" connectNulls={false} />
+            )}
+          </ComposedChart>
+        ) : (
+          <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+              axisLine={false} tickLine={false}
             />
-          )}
-        </ComposedChart>
+            <YAxis
+              tickFormatter={fmt}
+              tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+              axisLine={false} tickLine={false} width={60}
+            />
+            <Tooltip content={<CustomTooltip />} />
+
+            <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16}
+                 radius={[4, 4, 0, 0]}
+                 onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+              {chartData.map((entry) => (
+                <Cell key={entry.monthDate} fill="#195e47"
+                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+              ))}
+            </Bar>
+
+            <Bar dataKey="expectedBar" name="Expected" maxBarSize={16}
+                 radius={[4, 4, 0, 0]}
+                 onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+              {chartData.map((entry) => (
+                <Cell key={entry.monthDate} fill="#85d1e3"
+                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+              ))}
+            </Bar>
+
+            <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16}
+                 radius={[4, 4, 0, 0]}
+                 onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
+              {chartData.map((entry) => (
+                <Cell key={entry.monthDate} fill="#ffcc12"
+                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+              ))}
+            </Bar>
+
+            <Line
+              type="monotone" dataKey="target" name="Target"
+              stroke="#dd6945" strokeWidth={2}
+              dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+              strokeDasharray="6 3"
+            />
+
+            {showLY && (
+              <Line
+                type="monotone" dataKey="confirmedLY" name="Last year"
+                stroke="#8a7a6a" strokeWidth={1.5}
+                dot={false} strokeDasharray="3 3"
+              />
+            )}
+          </ComposedChart>
+        )}
       </ResponsiveContainer>
 
       {/* Drill-down panel */}

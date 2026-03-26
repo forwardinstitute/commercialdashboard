@@ -40,10 +40,11 @@ function isThisMonth(year: number, month: number, today: Date): boolean {
   return year === today.getFullYear() && month === today.getMonth();
 }
 
-// Derive programme type from programme name
+// Derive programme type from programme name.
+// Fellowship must match 'Fellowship Programme 2026' specifically (not loose substring).
 export function getProgrammeType(name: string): Exclude<ProgrammeType, 'all'> {
   const n = name.toLowerCase();
-  if (n.includes('fellowship')) return 'fellowship';
+  if (n.includes('fellowship programme 2026')) return 'fellowship';
   if (n.includes('exchange')) return 'exchange';
   if (n.includes('leading through disruption') || n.includes('disruption')) return 'ltd';
   return 'other';

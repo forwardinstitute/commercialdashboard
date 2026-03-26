@@ -7,10 +7,11 @@ import {
 } from 'recharts';
 import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
 
-// Pure helper — duplicated here to avoid importing a server-side module into a client component
+// Pure helper — duplicated here to avoid importing a server-side module into a client component.
+// Fellowship must match 'Fellowship Programme 2026' specifically.
 function getProgrammeType(name: string): Exclude<ProgrammeType, 'all'> {
   const n = name.toLowerCase();
-  if (n.includes('fellowship')) return 'fellowship';
+  if (n.includes('fellowship programme 2026')) return 'fellowship';
   if (n.includes('exchange'))   return 'exchange';
   if (n.includes('leading through disruption') || n.includes('disruption')) return 'ltd';
   return 'other';
@@ -129,8 +130,9 @@ export default function ProgrammesChart({ data }: Props) {
   const [activeType, setActiveType]     = useState<ProgrammeType>('all');
   const [selection, setSelection]       = useState<Selection | null>(null);
   const [drillTab, setDrillTab]         = useState<DrillTab>('programmes');
-  const [showLY, setShowLY]             = useState(false);
-  const [showFullYear, setShowFullYear] = useState(false);
+  const [showLY, setShowLY]               = useState(false);
+  const [showFullYear, setShowFullYear]   = useState(false);
+  const [showCumulative, setShowCumulative] = useState(false);
   const [fyTab, setFyTab]               = useState<DrillTab>('programmes');
   const [fyBarType, setFyBarType]       = useState<BarType>('confirmed');
 
@@ -210,6 +212,23 @@ export default function ProgrammesChart({ data }: Props) {
     expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
     pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
   }));
+
+  // ── Cumulative data ────────────────────────────────────────────────────────
+
+  const cumulativeData = useMemo(() => {
+    let cumConfirmed = 0, cumTarget = 0, cumLY = 0;
+    return activeMonths.map(m => {
+      cumConfirmed += m.confirmed;
+      cumTarget    += m.target;
+      cumLY        += m.confirmedLY ?? 0;
+      return {
+        ...m,
+        cumConfirmed: m.isPast ? cumConfirmed : null,
+        cumTarget,
+        cumLY,
+      };
+    });
+  }, [activeMonths]);
 
   // ── Month drill-down opps ─────────────────────────────────────────────────
 
@@ -515,7 +534,7 @@ export default function ProgrammesChart({ data }: Props) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-lg font-bold text-[#212122] shrink-0"
                 style={{ fontFamily: 'Inria Serif, serif' }}>
-              Monthly Sales vs Target
+              {showCumulative ? 'Cumulative Sales vs Target' : 'Monthly Sales vs Target'}
             </h2>
             {/* Legend + toggles */}
             <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs font-[Geist] text-[#8a7a6a]">
@@ -548,6 +567,14 @@ export default function ProgrammesChart({ data }: Props) {
               >
                 Full year
               </button>
+              <button
+                onClick={() => { setShowCumulative(v => !v); setSelection(null); setShowFullYear(false); }}
+                className={`px-2 py-1 rounded-md border transition-colors ${
+                  showCumulative ? 'border-[#212122] bg-[#212122] text-[#fcf2e3]' : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                }`}
+              >
+                Cumulative
+              </button>
             </div>
           </div>
 
@@ -570,49 +597,82 @@ export default function ProgrammesChart({ data }: Props) {
 
         {/* Chart */}
         <ResponsiveContainer width="100%" height={320}>
-          <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
-            <XAxis dataKey="month"
-              tick={<CustomXTick activeMonths={activeMonths} />}
-              axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={fmt}
-              tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
-              axisLine={false} tickLine={false} width={60} />
-            <Tooltip content={<CustomTooltip />} />
+          {showCumulative ? (
+            <ComposedChart data={cumulativeData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
+              <XAxis dataKey="month"
+                tick={<CustomXTick activeMonths={activeMonths} />}
+                axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmt}
+                tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+                axisLine={false} tickLine={false} width={60} />
+              <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16} radius={[4,4,0,0]}
-                 onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-              {chartData.map(e => (
-                <Cell key={e.monthDate} fill="#195e47"
-                  opacity={selection && !isSelected(e.monthDate) ? 0.3 : 1} />
-              ))}
-            </Bar>
-            <Bar dataKey="expectedBar" name="Expected" maxBarSize={16} radius={[4,4,0,0]}
-                 onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
-              {chartData.map(e => (
-                <Cell key={e.monthDate} fill="#85d1e3"
-                  opacity={selection && !isSelected(e.monthDate) ? 0.3 : 1} />
-              ))}
-            </Bar>
-            <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16} radius={[4,4,0,0]}
-                 onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
-              {chartData.map(e => (
-                <Cell key={e.monthDate} fill="#ffcc12"
-                  opacity={selection && !isSelected(e.monthDate) ? 0.3 : 0.85} />
-              ))}
-            </Bar>
+              {/* Cumulative target — full year projection */}
+              <Line type="monotone" dataKey="cumTarget" name="Target"
+                stroke="#dd6945" strokeWidth={2}
+                dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+                strokeDasharray="6 3" />
 
-            <Line type="monotone" dataKey="target" name="Target"
-              stroke="#dd6945" strokeWidth={2}
-              dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
-              strokeDasharray="6 3" />
+              {/* Cumulative confirmed — up to current month only */}
+              <Line type="monotone" dataKey="cumConfirmed" name="Confirmed"
+                stroke="#195e47" strokeWidth={2.5}
+                dot={false} activeDot={{ r: 4, fill: '#195e47', strokeWidth: 0 }}
+                connectNulls={false} />
 
-            {showLY && (
-              <Line type="monotone" dataKey="confirmedLY" name="Last year"
-                stroke="#8a7a6a" strokeWidth={1.5}
-                dot={false} strokeDasharray="3 3" />
-            )}
-          </ComposedChart>
+              {/* Cumulative last year — optional */}
+              {showLY && (
+                <Line type="monotone" dataKey="cumLY" name="Last year"
+                  stroke="#8a7a6a" strokeWidth={1.5}
+                  dot={false} strokeDasharray="3 3"
+                  connectNulls={false} />
+              )}
+            </ComposedChart>
+          ) : (
+            <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
+              <XAxis dataKey="month"
+                tick={<CustomXTick activeMonths={activeMonths} />}
+                axisLine={false} tickLine={false} />
+              <YAxis tickFormatter={fmt}
+                tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist, sans-serif' }}
+                axisLine={false} tickLine={false} width={60} />
+              <Tooltip content={<CustomTooltip />} />
+
+              <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16} radius={[4,4,0,0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {chartData.map(e => (
+                  <Cell key={e.monthDate} fill="#195e47"
+                    opacity={selection && !isSelected(e.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+              <Bar dataKey="expectedBar" name="Expected" maxBarSize={16} radius={[4,4,0,0]}
+                   onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+                {chartData.map(e => (
+                  <Cell key={e.monthDate} fill="#85d1e3"
+                    opacity={selection && !isSelected(e.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+              <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16} radius={[4,4,0,0]}
+                   onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
+                {chartData.map(e => (
+                  <Cell key={e.monthDate} fill="#ffcc12"
+                    opacity={selection && !isSelected(e.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
+
+              <Line type="monotone" dataKey="target" name="Target"
+                stroke="#dd6945" strokeWidth={2}
+                dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+                strokeDasharray="6 3" />
+
+              {showLY && (
+                <Line type="monotone" dataKey="confirmedLY" name="Last year"
+                  stroke="#8a7a6a" strokeWidth={1.5}
+                  dot={false} strokeDasharray="3 3" />
+              )}
+            </ComposedChart>
+          )}
         </ResponsiveContainer>
 
         {/* ── Month drill-down ──────────────────────────────────────────────── */}
