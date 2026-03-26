@@ -38,11 +38,11 @@ export default async function AdvisoryPage() {
     <div className="min-h-screen bg-[#fcf2e3]">
       <NavBar />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         {/* Page title + updated time */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-[#212122]"
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#212122]"
                 style={{ fontFamily: 'Inria Serif, serif' }}>
               Advisory
             </h1>
@@ -51,7 +51,7 @@ export default async function AdvisoryPage() {
             </p>
           </div>
           {data?.lastUpdated && (
-            <p className="text-xs text-[#8a7a6a] font-[Geist]">
+            <p className="hidden sm:block text-xs text-[#8a7a6a] font-[Geist] shrink-0">
               Updated {fmtDate(data.lastUpdated)}
             </p>
           )}
@@ -73,17 +73,17 @@ export default async function AdvisoryPage() {
               <p className="text-xs font-[Geist] uppercase tracking-widest text-[#8a7a6a] mb-3">
                 Income Year to Date
               </p>
-              <div className="flex items-end gap-10 mb-4">
+              <div className="flex items-end gap-6 sm:gap-10 mb-4">
                 <div>
                   <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Confirmed</p>
-                  <p className="text-4xl font-bold text-[#212122]"
+                  <p className="text-2xl sm:text-4xl font-bold text-[#212122]"
                      style={{ fontFamily: 'Inria Serif, serif' }}>
                     {fmt(data.ytdConfirmed)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-[#8a7a6a] font-[Geist] mb-1">Target</p>
-                  <p className="text-4xl font-bold text-[#212122]"
+                  <p className="text-2xl sm:text-4xl font-bold text-[#212122]"
                      style={{ fontFamily: 'Inria Serif, serif' }}>
                     {fmt(data.ytdTarget)}
                   </p>

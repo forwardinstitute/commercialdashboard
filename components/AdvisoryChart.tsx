@@ -226,12 +226,12 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   return (
     <div className="fi-card">
       {/* Header + legend */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-bold text-[#212122]"
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+        <h2 className="text-lg font-bold text-[#212122] shrink-0"
             style={{ fontFamily: 'Inria Serif, serif' }}>
           Monthly Income vs Target
         </h2>
-        <div className="flex items-center gap-4 text-xs font-[Geist] text-[#8a7a6a]">
+        <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs font-[Geist] text-[#8a7a6a]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm inline-block bg-[#195e47]" />
             Confirmed
@@ -341,7 +341,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
       {selection && selectedMonthData && (
         <div className="mt-6 border-t border-[#e8ddd0] pt-6">
           {/* Panel header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
             <div>
               <h3 className="font-bold text-[#212122] text-base"
                   style={{ fontFamily: 'Inria Serif, serif' }}>
@@ -353,7 +353,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center flex-wrap gap-2">
               {/* Bar type switcher */}
               <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
                 {(['confirmed', 'expected', 'pipeline'] as BarType[]).map(bt => (
@@ -412,9 +412,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                   </div>
                   {projects.map(({ opp, slice }) => (
                     <div key={opp.Id}
-                         className="flex items-center justify-between px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist]">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-[#212122] truncate">{opp.Name}</span>
+                         className="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist] gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[#212122] truncate text-xs sm:text-sm">{opp.Name}</span>
                         {oppSector(opp) !== 'Unknown' && (
                           <span
                             className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
@@ -427,7 +427,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 shrink-0 ml-4">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           opp.StageName === 'Confirmed'
                             ? 'bg-[#e8f5f0] text-[#195e47]'
@@ -546,9 +546,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                   </div>
                   {projects.map(({ opp, slice }) => (
                     <div key={opp.Id}
-                         className="flex items-center justify-between px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist]">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-[#212122] truncate">{opp.Name}</span>
+                         className="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist] gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[#212122] truncate text-xs sm:text-sm">{opp.Name}</span>
                         {oppSector(opp) !== 'Unknown' && (
                           <span
                             className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
@@ -561,7 +561,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 shrink-0 ml-4">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           opp.StageName === 'Confirmed'
                             ? 'bg-[#e8f5f0] text-[#195e47]'
