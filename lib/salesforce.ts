@@ -86,6 +86,7 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
+           Sector__c, Account.Name, Account.Sector__c,
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__r.Name LIKE '%Advisory Practice%'

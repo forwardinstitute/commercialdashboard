@@ -34,9 +34,11 @@ export interface AdvisoryOpportunity {
   Amount: number | null;
   StageName: string;
   Probability: number | null;
-  Start_Date_All__c: string | null;   // e.g. "2025-10-01"
-  End_DateAll__c: string | null;       // e.g. "2026-09-30"
-  Number_of_Months__c: number | null; // pre-calculated duration in months
+  Start_Date_All__c: string | null;
+  End_DateAll__c: string | null;
+  Number_of_Months__c: number | null;
+  Sector__c: string | null;
+  Account?: { Name: string; Sector__c: string | null };
   Programme__r?: { Name: string };
 }
 
@@ -47,6 +49,7 @@ export interface AdvisoryData {
   ytdMargin: number;
   variance: number;
   months: MonthlyData[];
+  opportunities: AdvisoryOpportunity[];
   lastUpdated: string;
 }
 

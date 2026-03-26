@@ -130,6 +130,7 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     ytdMargin: 0,
     variance:  ytdConfirmed - ytdTarget,
     months,
+    opportunities: opps,
     lastUpdated: new Date().toISOString(),
   };
 }

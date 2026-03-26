@@ -102,8 +102,8 @@ export default async function AdvisoryPage() {
               </div>
             </div>
 
-            {/* Monthly chart */}
-            <AdvisoryChart data={data.months} />
+            {/* Monthly chart with drill-down */}
+            <AdvisoryChart data={data.months} opportunities={data.opportunities} />
           </>
         )}
       </main>
