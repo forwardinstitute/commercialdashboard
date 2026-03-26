@@ -1,0 +1,155 @@
+import { getProgrammeOpportunities, getProgrammeOpportunitiesLY, getProgrammeFinanceRecords } from '@/lib/salesforce';
+import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// FY 2026/27: March 2026 through February 2027 (month is 0-indexed)
+const FY_MONTHS = [
+  { year: 2026, month: 2 },  // March
+  { year: 2026, month: 3 },  // April
+  { year: 2026, month: 4 },  // May
+  { year: 2026, month: 5 },  // June
+  { year: 2026, month: 6 },  // July
+  { year: 2026, month: 7 },  // August
+  { year: 2026, month: 8 },  // September
+  { year: 2026, month: 9 },  // October
+  { year: 2026, month: 10 }, // November
+  { year: 2026, month: 11 }, // December
+  { year: 2027, month: 0 },  // January
+  { year: 2027, month: 1 },  // February
+];
+
+function lastDayOf(year: number, month: number): Date {
+  return new Date(year, month + 1, 0);
+}
+
+function monthEndIso(year: number, month: number): string {
+  return lastDayOf(year, month).toISOString().slice(0, 10);
+}
+
+function isCurrentOrPast(year: number, month: number, today: Date): boolean {
+  return year * 100 + month <= today.getFullYear() * 100 + today.getMonth();
+}
+
+function isThisMonth(year: number, month: number, today: Date): boolean {
+  return year === today.getFullYear() && month === today.getMonth();
+}
+
+// Derive programme type from programme name
+export function getProgrammeType(name: string): Exclude<ProgrammeType, 'all'> {
+  const n = name.toLowerCase();
+  if (n.includes('fellowship')) return 'fellowship';
+  if (n.includes('exchange')) return 'exchange';
+  if (n.includes('leading through disruption') || n.includes('disruption')) return 'ltd';
+  return 'other';
+}
+
+// Check if an opp's CloseDate falls in a given calendar month
+function closesInMonth(opp: ProgrammeOpportunity, year: number, month: number): boolean {
+  if (!opp.CloseDate) return false;
+  // Parse as noon to avoid timezone edge cases
+  const d = new Date(opp.CloseDate + 'T12:00:00');
+  return d.getFullYear() === year && d.getMonth() === month;
+}
+
+export async function buildProgrammesData(): Promise<ProgrammesData> {
+  const [opps, oppsLY, financeRecords] = await Promise.all([
+    getProgrammeOpportunities(),
+    getProgrammeOpportunitiesLY(),
+    getProgrammeFinanceRecords(),
+  ]);
+
+  const today = new Date();
+
+  // ── Targets ──────────────────────────────────────────────────────────────────
+  // Finance records for non-Advisory programmes. Targets are stored per
+  // Programme Finance record, so we can split them by programme type.
+  const progFinance = financeRecords.filter(
+    r => !(r.Programme__r?.Name ?? '').includes('Advisory Practice')
+  );
+
+  const allTargets:  Record<string, number> = {};
+  const fellowshipTargets: Record<string, number> = {};
+  const exchangeTargets:   Record<string, number> = {};
+  const ltdTargets:        Record<string, number> = {};
+  const otherTargets:      Record<string, number> = {};
+
+  for (const r of progFinance) {
+    const key = r.Recruitment_Target_Month__c;
+    const amount = r.Target_Amount__c ?? 0;
+    allTargets[key] = (allTargets[key] ?? 0) + amount;
+
+    const type = getProgrammeType(r.Programme__r?.Name ?? '');
+    if (type === 'fellowship') fellowshipTargets[key] = (fellowshipTargets[key] ?? 0) + amount;
+    else if (type === 'exchange') exchangeTargets[key] = (exchangeTargets[key] ?? 0) + amount;
+    else if (type === 'ltd')      ltdTargets[key]      = (ltdTargets[key]      ?? 0) + amount;
+    else                          otherTargets[key]    = (otherTargets[key]    ?? 0) + amount;
+  }
+
+  // ── Monthly data (all types combined) ────────────────────────────────────────
+  const months: MonthlyData[] = FY_MONTHS.map(({ year, month }, _idx) => {
+    const endIso        = monthEndIso(year, month);
+    const isPast        = isCurrentOrPast(year, month, today);
+    const isCurrentMonth = isThisMonth(year, month, today);
+
+    let confirmed = 0;
+    let expected  = 0;
+    let potential = 0;
+
+    for (const opp of opps) {
+      if (!closesInMonth(opp, year, month)) continue;
+      const amount = opp.Amount ?? 0;
+      if (opp.StageName === 'Confirmed') {
+        confirmed += amount;
+      } else {
+        const prob = (opp.Probability ?? 0) / 100;
+        expected  += amount * prob;
+        potential += amount * (1 - prob);
+      }
+    }
+
+    // Last year confirmed: same calendar month, one year prior
+    const lyYear = year - 1;
+    let confirmedLY = 0;
+    for (const opp of oppsLY) {
+      if (!closesInMonth(opp, lyYear, month)) continue;
+      confirmedLY += opp.Amount ?? 0;
+    }
+
+    return {
+      month:     MONTH_NAMES[month],
+      monthDate: endIso,
+      target:    allTargets[endIso] ?? 0,
+      confirmed,
+      expected,
+      potential,
+      costs:  0,
+      margin: 0,
+      isPast,
+      isCurrentMonth,
+      confirmedLY,
+    };
+  });
+
+  const ytdMonths    = months.filter(m => m.isPast);
+  const ytdConfirmed = ytdMonths.reduce((s, m) => s + m.confirmed, 0);
+  const ytdTarget    = ytdMonths.reduce((s, m) => s + m.target,    0);
+
+  return {
+    ytdConfirmed,
+    ytdTarget,
+    variance: ytdConfirmed - ytdTarget,
+    months,
+    opportunities:   opps,
+    opportunitiesLY: oppsLY,
+    targetsByType: {
+      all:        allTargets,
+      fellowship: fellowshipTargets,
+      exchange:   exchangeTargets,
+      ltd:        ltdTargets,
+      other:      otherTargets,
+    },
+    lastUpdated: new Date().toISOString(),
+  };
+}

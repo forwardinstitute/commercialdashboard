@@ -1,4 +1,4 @@
-import { AdvisoryOpportunity, ProgrammeFinanceRecord } from '@/types';
+import { AdvisoryOpportunity, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
 
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
@@ -119,4 +119,45 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
     ORDER BY Start_Date_All__c ASC
   `;
   return query<AdvisoryOpportunity>(soql);
+}
+
+// ─── Programmes ───────────────────────────────────────────────────────────────
+
+// All non-Advisory programme opportunities closing in FY 2026/27 (Mar 2026 – Feb 2027).
+// Income lands in the month of CloseDate (not prorated).
+export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[]> {
+  const soql = `
+    SELECT Id, Name, Amount, StageName, Probability,
+           CloseDate, Total_Places__c,
+           Organisation_Sector__c, Account.Name,
+           Programme__r.Name
+    FROM Opportunity
+    WHERE Programme__c != null
+      AND Programme__r.Name NOT LIKE '%Advisory Practice%'
+      AND StageName != 'Opportunity lost'
+      AND Amount != null
+      AND CloseDate >= 2026-03-01
+      AND CloseDate <= 2027-02-28
+    ORDER BY CloseDate ASC
+  `;
+  return query<ProgrammeOpportunity>(soql);
+}
+
+// Confirmed programme opportunities from last FY (Mar 2025 – Feb 2026) for LY comparison.
+export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunity[]> {
+  const soql = `
+    SELECT Id, Name, Amount, StageName, Probability,
+           CloseDate, Total_Places__c,
+           Organisation_Sector__c, Account.Name,
+           Programme__r.Name
+    FROM Opportunity
+    WHERE Programme__c != null
+      AND Programme__r.Name NOT LIKE '%Advisory Practice%'
+      AND StageName = 'Confirmed'
+      AND Amount != null
+      AND CloseDate >= 2025-03-01
+      AND CloseDate <= 2026-02-28
+    ORDER BY CloseDate ASC
+  `;
+  return query<ProgrammeOpportunity>(soql);
 }

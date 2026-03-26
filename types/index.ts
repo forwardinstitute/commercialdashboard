@@ -44,6 +44,36 @@ export interface AdvisoryOpportunity {
   Programme__r?: { Name: string };
 }
 
+// ─── Programmes ───────────────────────────────────────────────────────────────
+
+export type ProgrammeType = 'all' | 'fellowship' | 'exchange' | 'ltd' | 'other';
+
+export interface ProgrammeOpportunity {
+  Id: string;
+  Name: string;
+  Amount: number | null;
+  StageName: string;
+  Probability: number | null;
+  CloseDate: string | null;
+  Total_Places__c: number | null;
+  Organisation_Sector__c: string | null;
+  Account?: { Name: string };
+  Programme__r?: { Name: string };
+}
+
+export interface ProgrammesData {
+  ytdConfirmed: number;
+  ytdTarget: number;
+  variance: number;
+  months: MonthlyData[];                          // all types combined
+  opportunities: ProgrammeOpportunity[];           // current FY, all types
+  opportunitiesLY: ProgrammeOpportunity[];         // last FY confirmed, all types
+  targetsByType: Record<ProgrammeType, Record<string, number>>; // monthDate → target
+  lastUpdated: string;
+}
+
+// ─── Advisory ─────────────────────────────────────────────────────────────────
+
 export interface AdvisoryData {
   ytdConfirmed: number;
   ytdTarget: number;
