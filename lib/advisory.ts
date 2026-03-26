@@ -4,6 +4,30 @@ import { AdvisoryData, AdvisoryOpportunity, MonthlyData } from '@/types';
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ADVISORY LY OVERRIDE — FY 2025/26 actuals (hardcoded)
+//
+// Salesforce's last-year confirmed figures for Advisory Practice are not
+// reliable due to the flow trigger bug. These are the verified actuals.
+//
+// TO REVERT (e.g. for FY 2027/28): delete this constant and replace
+// `ADVISORY_LY_ACTUALS[idx]` with `confirmedLYByIndex[idx]` in the month map.
+// ─────────────────────────────────────────────────────────────────────────────
+const ADVISORY_LY_ACTUALS: number[] = [
+  218198, // Mar 2025
+  179582, // Apr 2025
+  140840, // May 2025
+  164593, // Jun 2025
+  156698, // Jul 2025
+  178075, // Aug 2025
+  271575, // Sep 2025
+  212320, // Oct 2025
+  142705, // Nov 2025
+  126585, // Dec 2025
+  139689, // Jan 2026
+  190666, // Feb 2026
+];
+
 // FY 2025/26: March 2025 through February 2026 — last year's equivalent months (0-indexed)
 const LY_MONTHS = [
   { year: 2025, month: 2 },  // March 2025
@@ -150,7 +174,8 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       margin: 0,
       isPast,
       isCurrentMonth,
-      confirmedLY: confirmedLYByIndex[idx] ?? 0,
+      // Using hardcoded actuals — swap to confirmedLYByIndex[idx] when SF data is trusted
+      confirmedLY: ADVISORY_LY_ACTUALS[idx] ?? 0,
     };
   });
 
