@@ -322,7 +322,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           <Line
             type="monotone" dataKey="target" name="Target"
             stroke="#dd6945" strokeWidth={2}
-            dot={{ fill: '#dd6945', r: 3 }} strokeDasharray="6 3"
+            dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+            strokeDasharray="6 3"
           />
 
           {/* Last year confirmed — toggled */}
