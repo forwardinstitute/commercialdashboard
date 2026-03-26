@@ -106,6 +106,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
   const [showLY, setShowLY]         = useState(false);
+  const [showFullYear, setShowFullYear] = useState(false);
+  const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
+  const [fyBarType, setFyBarType]   = useState<BarType>('confirmed');
 
   const chartData = data.map(d => ({
     ...d,
@@ -169,9 +172,47 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const sectorEntries = Object.entries(bySector).sort((a, b) => b[1] - a[1]);
   const sectorTotal   = sectorEntries.reduce((s, [, v]) => s + v, 0);
 
+  // Full year breakdown: each opp's total contribution across all 12 FY months
+  const fyOpps = (() => {
+    if (fyBarType === 'confirmed') {
+      return opportunities
+        .filter(opp => opp.StageName === 'Confirmed')
+        .map(opp => {
+          const slice = data.reduce((sum, m) => sum + (coversMonth(opp, m.monthDate) ? monthlySlice(opp) : 0), 0);
+          return { opp, slice };
+        });
+    }
+    return opportunities
+      .filter(opp => opp.StageName !== 'Confirmed' && opp.StageName !== 'Opportunity lost')
+      .map(opp => {
+        const full = data.reduce((sum, m) => sum + (coversMonth(opp, m.monthDate) ? monthlySlice(opp) : 0), 0);
+        const prob = (opp.Probability ?? 0) / 100;
+        const slice = fyBarType === 'expected' ? full * prob : full * (1 - prob);
+        return { opp, slice };
+      });
+  })().filter(({ slice }) => slice > 0).sort((a, b) => b.slice - a.slice);
+
+  const fyByOrg = fyOpps.reduce<Record<string, { total: number; projects: typeof fyOpps }>>((acc, item) => {
+    const org = oppOrg(item.opp);
+    if (!acc[org]) acc[org] = { total: 0, projects: [] };
+    acc[org].total += item.slice;
+    acc[org].projects.push(item);
+    return acc;
+  }, {});
+  const fyOrgEntries = Object.entries(fyByOrg).sort((a, b) => b[1].total - a[1].total);
+
+  const fyBySector = fyOpps.reduce<Record<string, number>>((acc, { opp, slice }) => {
+    const sector = oppSector(opp);
+    acc[sector] = (acc[sector] ?? 0) + slice;
+    return acc;
+  }, {});
+  const fySectorEntries = Object.entries(fyBySector).sort((a, b) => b[1] - a[1]);
+  const fySectorTotal   = fySectorEntries.reduce((s, [, v]) => s + v, 0);
+
   // Each bar gets its own click handler that records the bar type
   const makeClickHandler = (barType: BarType) => (barData: any) => {
     if (!barData?.monthDate) return;
+    setShowFullYear(false);
     setSelection(prev =>
       prev?.monthDate === barData.monthDate && prev?.barType === barType
         ? null
@@ -217,6 +258,16 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           >
             <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px dotted #8a7a6a' }} />
             Last year
+          </button>
+          <button
+            onClick={() => { setShowFullYear(v => !v); setSelection(null); }}
+            className={`px-2 py-1 rounded-md border transition-colors ${
+              showFullYear
+                ? 'border-[#195e47] bg-[#195e47] text-[#fcf2e3]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            Full year
           </button>
         </div>
       </div>
@@ -400,6 +451,140 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               )}
               {sectorEntries.map(([sector, total]) => {
                 const pct = sectorTotal > 0 ? (total / sectorTotal) * 100 : 0;
+                return (
+                  <div key={sector}>
+                    <div className="flex items-center justify-between mb-1 text-sm font-[Geist]">
+                      <span className="font-medium text-[#212122]">{sector}</span>
+                      <span className="text-[#8a7a6a]">{fmtFull(total)} · {Math.round(pct)}%</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-[#e8ddd0] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: sectorColour(sector) }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Full year breakdown panel */}
+      {showFullYear && (
+        <div className="mt-6 border-t border-[#e8ddd0] pt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-bold text-[#212122] text-base"
+                  style={{ fontFamily: 'Inria Serif, serif' }}>
+                Full year breakdown — FY 2026/27
+              </h3>
+              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
+                {fmtFull(fyOpps.reduce((s, { slice }) => s + slice, 0))}{' '}
+                {BAR_LABELS[fyBarType].toLowerCase()} income across all months
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Bar type switcher */}
+              <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
+                {(['confirmed', 'expected', 'pipeline'] as BarType[]).map(bt => (
+                  <button
+                    key={bt}
+                    onClick={() => setFyBarType(bt)}
+                    className="px-3 py-1.5 capitalize transition-colors"
+                    style={
+                      fyBarType === bt
+                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'pipeline' ? '#212122' : '#fcf2e3' }
+                        : { color: '#8a7a6a' }
+                    }
+                  >
+                    {BAR_LABELS[bt]}
+                  </button>
+                ))}
+              </div>
+
+              {/* View toggle */}
+              <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
+                <button
+                  onClick={() => setFyTab('projects')}
+                  className={`px-3 py-1.5 ${fyTab === 'projects' ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}
+                >
+                  By Organisation
+                </button>
+                <button
+                  onClick={() => setFyTab('sectors')}
+                  className={`px-3 py-1.5 ${fyTab === 'sectors' ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}
+                >
+                  By Sector
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowFullYear(false)}
+                className="text-[#8a7a6a] hover:text-[#212122] text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* By Organisation */}
+          {fyTab === 'projects' && (
+            <div className="space-y-3">
+              {fyOrgEntries.length === 0 && (
+                <p className="text-sm text-[#8a7a6a] font-[Geist]">No opportunities found.</p>
+              )}
+              {fyOrgEntries.map(([org, { total, projects }]) => (
+                <div key={org} className="rounded-lg border border-[#e8ddd0] overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#f5ebe0]">
+                    <span className="font-medium text-sm text-[#212122] font-[Geist]">{org}</span>
+                    <span className="text-sm font-bold text-[#212122] font-[Geist]">{fmtFull(total)}</span>
+                  </div>
+                  {projects.map(({ opp, slice }) => (
+                    <div key={opp.Id}
+                         className="flex items-center justify-between px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist]">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-[#212122] truncate">{opp.Name}</span>
+                        {oppSector(opp) !== 'Unknown' && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
+                            style={{
+                              backgroundColor: sectorColour(oppSector(opp)) + '22',
+                              color: sectorColour(oppSector(opp)),
+                            }}
+                          >
+                            {oppSector(opp)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0 ml-4">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          opp.StageName === 'Confirmed'
+                            ? 'bg-[#e8f5f0] text-[#195e47]'
+                            : 'bg-[#fff8e0] text-[#b8860b]'
+                        }`}>
+                          {opp.StageName === 'Confirmed' ? 'Confirmed' : `${opp.Probability ?? 0}%`}
+                        </span>
+                        <span className="font-medium text-[#212122]">{fmtFull(slice)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* By Sector */}
+          {fyTab === 'sectors' && (
+            <div className="space-y-2">
+              {fySectorEntries.length === 0 && (
+                <p className="text-sm text-[#8a7a6a] font-[Geist]">No sector data available.</p>
+              )}
+              {fySectorEntries.map(([sector, total]) => {
+                const pct = fySectorTotal > 0 ? (total / fySectorTotal) * 100 : 0;
                 return (
                   <div key={sector}>
                     <div className="flex items-center justify-between mb-1 text-sm font-[Geist]">
