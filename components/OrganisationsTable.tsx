@@ -95,9 +95,12 @@ function buildSectorRows(orgs: OrganisationSummary[]): SectorRow[] {
 export default function OrganisationsTable({ data }: Props) {
   const { organisations } = data;
 
+  type SortKey = 'name' | 'confirmed' | 'expected' | 'target';
+
   const [tab, setTab]               = useState<Tab>('organisations');
   const [activeSector, setActiveSector] = useState<string | null>(null);
   const [expandedSectors, setExpandedSectors] = useState<Set<string>>(new Set());
+  const [sortKey, setSortKey]       = useState<SortKey>('confirmed');
 
   const sectorRows = useMemo(() => buildSectorRows(organisations), [organisations]);
 
@@ -105,8 +108,27 @@ export default function OrganisationsTable({ data }: Props) {
     const filtered = activeSector
       ? organisations.filter(o => o.sector === activeSector)
       : organisations;
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [organisations, activeSector]);
+    return [...filtered].sort((a, b) => {
+      if (sortKey === 'name')      return a.name.localeCompare(b.name);
+      if (sortKey === 'confirmed') return b.combinedConfirmed - a.combinedConfirmed;
+      if (sortKey === 'expected')  return b.combinedExpected  - a.combinedExpected;
+      if (sortKey === 'target') {
+        const ta = a.combinedTarget ?? -1;
+        const tb = b.combinedTarget ?? -1;
+        return tb - ta;
+      }
+      return 0;
+    });
+  }, [organisations, sortKey, activeSector]);
+
+  const SortButton = ({ k, label }: { k: SortKey; label: string }) => (
+    <button onClick={() => setSortKey(k)}
+      className={`text-xs font-[Geist] transition-colors ${
+        sortKey === k ? 'text-[#212122] font-semibold' : 'text-[#8a7a6a] hover:text-[#212122]'
+      }`}>
+      {label}{sortKey === k ? ' ↓' : ''}
+    </button>
+  );
 
   const toggleSector = (sector: string) => {
     setExpandedSectors(prev => {
@@ -158,6 +180,15 @@ export default function OrganisationsTable({ data }: Props) {
                 {s.sector}
               </button>
             ))}
+          </div>
+
+          {/* Sort controls */}
+          <div className="flex items-center gap-3 mb-3 text-xs text-[#8a7a6a] font-[Geist]">
+            <span>Sort:</span>
+            <SortButton k="confirmed" label="Confirmed" />
+            <SortButton k="expected"  label="Expected" />
+            <SortButton k="target"    label="Target" />
+            <SortButton k="name"      label="Name" />
           </div>
 
           {/* Table */}
