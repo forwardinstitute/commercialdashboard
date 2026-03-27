@@ -300,7 +300,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               cumConfirmed += m.confirmed;
               cumTarget    += m.target;
               cumLY        += m.confirmedLY ?? 0;
-              return { ...m, cumConfirmed: m.isPast ? cumConfirmed : null, cumTarget, cumLY };
+              return { ...m, cumConfirmed: (m.isPast || m.isCurrentMonth) ? cumConfirmed : null, cumTarget, cumLY };
             });
           })()} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
