@@ -223,7 +223,7 @@ export default function ProgrammesChart({ data }: Props) {
       cumLY        += m.confirmedLY ?? 0;
       return {
         ...m,
-        cumConfirmed: m.isPast ? cumConfirmed : null,
+        cumConfirmed: (m.isPast || m.isCurrentMonth) ? cumConfirmed : null,
         cumTarget,
         cumLY,
       };
@@ -617,7 +617,8 @@ export default function ProgrammesChart({ data }: Props) {
               {/* Cumulative confirmed — up to current month only */}
               <Line type="monotone" dataKey="cumConfirmed" name="Confirmed"
                 stroke="#195e47" strokeWidth={2.5}
-                dot={false} activeDot={{ r: 4, fill: '#195e47', strokeWidth: 0 }}
+                dot={{ r: 3, fill: '#195e47', strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: '#195e47', strokeWidth: 0 }}
                 connectNulls={false} />
 
               {/* Cumulative last year — optional */}

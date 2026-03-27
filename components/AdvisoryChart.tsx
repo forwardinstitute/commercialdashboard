@@ -317,7 +317,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               strokeDasharray="6 3" />
             <Line type="monotone" dataKey="cumConfirmed" name="Confirmed"
               stroke="#195e47" strokeWidth={2.5}
-              dot={false} activeDot={{ r: 4, fill: '#195e47', strokeWidth: 0 }}
+              dot={{ r: 3, fill: '#195e47', strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#195e47', strokeWidth: 0 }}
               connectNulls={false} />
             {showLY && (
               <Line type="monotone" dataKey="cumLY" name="Last year"
