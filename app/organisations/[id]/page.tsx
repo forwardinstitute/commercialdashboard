@@ -31,7 +31,6 @@ export default async function OrganisationDetailPage({ params }: Props) {
       );
     }
 
-    // Filter opps for this account
     const orgAdvisoryOpps = advisoryOpps.filter(o => o.Account?.Id === id);
 
     const isOldFellowship = (o: typeof rawProgrammeOpps[0]) => {

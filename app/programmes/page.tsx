@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-import NavBar from '@/components/NavBar';
 import ProgrammesChart from '@/components/ProgrammesChart';
 import { buildProgrammesData } from '@/lib/programmes';
 import { ProgrammesData } from '@/types';
@@ -28,8 +27,6 @@ export default async function ProgrammesPage() {
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
-      <NavBar />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         {/* Page title */}
         <div className="flex items-start sm:items-center justify-between gap-4">
