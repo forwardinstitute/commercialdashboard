@@ -106,7 +106,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
   const [showLY, setShowLY]               = useState(false);
-  const [showPossible, setShowPossible]   = useState(true);
+  const [showPossible, setShowPossible]   = useState(false);
   const [showFullYear, setShowFullYear]   = useState(false);
   const [showCumulative, setShowCumulative] = useState(false);
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
