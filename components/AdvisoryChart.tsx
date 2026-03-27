@@ -296,12 +296,14 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
         {showCumulative ? (
           <ComposedChart data={(() => {
             let cumConfirmed = 0, cumTarget = 0, cumLY = 0;
-            return data.map(m => {
+            const months = data.map(m => {
               cumConfirmed += m.confirmed;
               cumTarget    += m.target;
               cumLY        += m.confirmedLY ?? 0;
               return { ...m, cumConfirmed: (m.isPast || m.isCurrentMonth) ? cumConfirmed : null, cumTarget, cumLY };
             });
+            // Prepend a Feb anchor at £0 so recharts can draw a line from the start
+            return [{ month: 'Feb', monthDate: '2026-02-28', cumConfirmed: 0, cumTarget: 0, cumLY: 0 }, ...months];
           })()} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
             <XAxis dataKey="month"
