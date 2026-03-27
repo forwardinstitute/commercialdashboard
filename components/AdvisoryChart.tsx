@@ -12,7 +12,7 @@ interface Props {
   opportunities: AdvisoryOpportunity[];
 }
 
-type BarType = 'confirmed' | 'expected' | 'pipeline';
+type BarType = 'confirmed' | 'expected' | 'possible';
 
 interface Selection {
   monthDate: string;
@@ -93,19 +93,20 @@ function sectorColour(sector: string): string {
 const BAR_LABELS: Record<BarType, string> = {
   confirmed: 'Confirmed',
   expected:  'Expected',
-  pipeline:  'Pipeline',
+  possible:  'Possible',
 };
 
 const BAR_COLOURS: Record<BarType, string> = {
   confirmed: '#195e47',
   expected:  '#85d1e3',
-  pipeline:  '#ffcc12',
+  possible:  '#ffcc12',
 };
 
 export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
   const [showLY, setShowLY]               = useState(false);
+  const [showPossible, setShowPossible]   = useState(true);
   const [showFullYear, setShowFullYear]   = useState(false);
   const [showCumulative, setShowCumulative] = useState(false);
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
@@ -115,9 +116,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
     ...d,
     confirmedBar: d.confirmed,
     // Expected = probability-weighted income from open opps (slice × prob%)
-    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected            : 0,
-    // Pipeline = full opportunity value (expected + potential = full amount)
-    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.expected + d.potential : 0,
+    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected   : 0,
+    // Possible = full opportunity amount minus expected (the upside ceiling)
+    possibleBar:  (!d.isPast || d.isCurrentMonth) ? d.potential   : 0,
   }));
 
   const selectedMonthData = selection
@@ -136,7 +137,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             .sort((a, b) => b.slice - a.slice);
         }
         // Expected: probability-weighted amount per open opp
-        // Pipeline: full opportunity value (total potential if it converts)
+        // Possible: full opportunity value (total potential if it converts)
         return active
           .filter(opp => opp.StageName !== 'Confirmed' && opp.StageName !== 'Opportunity lost')
           .map(opp => {
@@ -188,7 +189,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
       .map(opp => {
         const full = data.reduce((sum, m) => sum + (coversMonth(opp, m.monthDate) ? monthlySlice(opp) : 0), 0);
         const prob = (opp.Probability ?? 0) / 100;
-        const slice = fyBarType === 'expected' ? full * prob : full;
+        const slice = fyBarType === 'expected' ? full * prob : full; // 'possible' also uses full amount
         return { opp, slice };
       });
   })().filter(({ slice }) => slice > 0).sort((a, b) => b.slice - a.slice);
@@ -241,10 +242,17 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" />
             Expected
           </span>
-          <span className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowPossible(v => !v)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+              showPossible
+                ? 'border-[#ffcc12] bg-[#fffbe6] text-[#212122]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
             <span className="w-3 h-3 rounded-sm inline-block bg-[#ffcc12]" />
-            Pipeline
-          </span>
+            Possible
+          </button>
           <span className="flex items-center gap-1.5">
             <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
             Target
@@ -332,8 +340,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={16}
-                 radius={[4, 4, 0, 0]}
+            <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={32}
+                 stackId="income" radius={[0, 0, 0, 0]}
                  onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
               {chartData.map((entry) => (
                 <Cell key={entry.monthDate} fill="#195e47"
@@ -341,8 +349,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               ))}
             </Bar>
 
-            <Bar dataKey="expectedBar" name="Expected" maxBarSize={16}
-                 radius={[4, 4, 0, 0]}
+            <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
+                 stackId="income"
+                 radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
                  onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
               {chartData.map((entry) => (
                 <Cell key={entry.monthDate} fill="#85d1e3"
@@ -350,14 +359,16 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               ))}
             </Bar>
 
-            <Bar dataKey="pipelineBar" name="Pipeline" maxBarSize={16}
-                 radius={[4, 4, 0, 0]}
-                 onClick={makeClickHandler('pipeline')} style={{ cursor: 'pointer' }}>
-              {chartData.map((entry) => (
-                <Cell key={entry.monthDate} fill="#ffcc12"
-                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-              ))}
-            </Bar>
+            {showPossible && (
+              <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
+                   stackId="income" radius={[4, 4, 0, 0]}
+                   onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#ffcc12"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
+            )}
 
             <Line
               type="monotone" dataKey="target" name="Target"
@@ -396,14 +407,14 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             <div className="flex items-center flex-wrap gap-2">
               {/* Bar type switcher */}
               <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
-                {(['confirmed', 'expected', 'pipeline'] as BarType[]).map(bt => (
+                {(['confirmed', 'expected', 'possible'] as BarType[]).map(bt => (
                   <button
                     key={bt}
                     onClick={() => setSelection(s => s ? { ...s, barType: bt } : null)}
                     className="px-3 py-1.5 capitalize transition-colors"
                     style={
                       selection.barType === bt
-                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'pipeline' ? '#212122' : '#fcf2e3' }
+                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'possible' ? '#212122' : '#fcf2e3' }
                         : { color: '#8a7a6a' }
                     }
                   >
@@ -530,14 +541,14 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             <div className="flex items-center gap-3">
               {/* Bar type switcher */}
               <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-xs font-[Geist]">
-                {(['confirmed', 'expected', 'pipeline'] as BarType[]).map(bt => (
+                {(['confirmed', 'expected', 'possible'] as BarType[]).map(bt => (
                   <button
                     key={bt}
                     onClick={() => setFyBarType(bt)}
                     className="px-3 py-1.5 capitalize transition-colors"
                     style={
                       fyBarType === bt
-                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'pipeline' ? '#212122' : '#fcf2e3' }
+                        ? { backgroundColor: BAR_COLOURS[bt], color: bt === 'possible' ? '#212122' : '#fcf2e3' }
                         : { color: '#8a7a6a' }
                     }
                   >
