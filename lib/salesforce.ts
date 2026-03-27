@@ -1,4 +1,4 @@
-import { AdvisoryOpportunity, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
+import { AdvisoryOpportunity, OrganisationAccount, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
 
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
@@ -84,7 +84,7 @@ export async function getAdvisoryOpportunitiesLY(): Promise<AdvisoryOpportunity[
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
-           Organisation_Sector__c, Account.Name,
+           Organisation_Sector__c, Account.Id, Account.Name,
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__r.Name LIKE '%Advisory Practice%'
@@ -106,7 +106,7 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
-           Organisation_Sector__c, Account.Name,
+           Organisation_Sector__c, Account.Id, Account.Name,
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__r.Name LIKE '%Advisory Practice%'
@@ -130,7 +130,7 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            CloseDate, Total_Places__c,
-           Organisation_Sector__c, Account.Name,
+           Organisation_Sector__c, Account.Id, Account.Name,
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__c != null
@@ -160,4 +160,22 @@ export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunit
     ORDER BY CloseDate ASC
   `;
   return query<ProgrammeOpportunity>(soql);
+}
+
+// ─── Organisations ────────────────────────────────────────────────────────────
+
+// Fetch Account records for partner organisations.
+// TODO: once these fields are created in Salesforce, add them to the SELECT:
+//   Advisory_FY_Target__c, Programmes_FY_Target__c,
+//   FY_Target__c, Realistic_Target_Pct__c
+export async function getPartnerAccounts(accountIds: string[]): Promise<OrganisationAccount[]> {
+  if (accountIds.length === 0) return [];
+  const idList = accountIds.map(id => `'${id}'`).join(',');
+  const soql = `
+    SELECT Id, Name
+    FROM Account
+    WHERE Id IN (${idList})
+    ORDER BY Name ASC
+  `;
+  return query<OrganisationAccount>(soql);
 }

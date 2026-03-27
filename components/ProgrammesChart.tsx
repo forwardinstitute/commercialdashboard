@@ -210,7 +210,7 @@ export default function ProgrammesChart({ data }: Props) {
     ...d,
     confirmedBar: d.confirmed,
     expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
-    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
+    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.expected + d.potential : 0,
   }));
 
   // ── Cumulative data ────────────────────────────────────────────────────────
@@ -248,8 +248,8 @@ export default function ProgrammesChart({ data }: Props) {
       .map(o => {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
-        const slice  = selection.barType === 'expected' ? amount * prob : amount * (1 - prob);
-        const places = (o.Total_Places__c ?? 0) * (selection.barType === 'expected' ? prob : 1 - prob);
+        const slice  = selection.barType === 'expected' ? amount * prob : amount;
+        const places = (o.Total_Places__c ?? 0) * (selection.barType === 'expected' ? prob : 1);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)
@@ -271,8 +271,8 @@ export default function ProgrammesChart({ data }: Props) {
       .map(o => {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
-        const slice  = fyBarType === 'expected' ? amount * prob : amount * (1 - prob);
-        const places = (o.Total_Places__c ?? 0) * (fyBarType === 'expected' ? prob : 1 - prob);
+        const slice  = fyBarType === 'expected' ? amount * prob : amount;
+        const places = (o.Total_Places__c ?? 0) * (fyBarType === 'expected' ? prob : 1);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)

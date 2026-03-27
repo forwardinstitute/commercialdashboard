@@ -115,9 +115,9 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
     ...d,
     confirmedBar: d.confirmed,
     // Expected = probability-weighted income from open opps (slice × prob%)
-    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected   : 0,
-    // Pipeline = the remaining headroom above expected (slice × (1-prob%))
-    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.potential  : 0,
+    expectedBar:  (!d.isPast || d.isCurrentMonth) ? d.expected            : 0,
+    // Pipeline = full opportunity value (expected + potential = full amount)
+    pipelineBar:  (!d.isPast || d.isCurrentMonth) ? d.expected + d.potential : 0,
   }));
 
   const selectedMonthData = selection
@@ -136,7 +136,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             .sort((a, b) => b.slice - a.slice);
         }
         // Expected: probability-weighted amount per open opp
-        // Pipeline: headroom = full slice × (1 - prob%) — what you'd gain if each opp fully converts
+        // Pipeline: full opportunity value (total potential if it converts)
         return active
           .filter(opp => opp.StageName !== 'Confirmed' && opp.StageName !== 'Opportunity lost')
           .map(opp => {
@@ -144,7 +144,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             const prob = (opp.Probability ?? 0) / 100;
             const slice = selection.barType === 'expected'
               ? full * prob
-              : full * (1 - prob);
+              : full;
             return { opp, slice };
           })
           .filter(({ slice }) => slice > 0)
@@ -188,7 +188,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
       .map(opp => {
         const full = data.reduce((sum, m) => sum + (coversMonth(opp, m.monthDate) ? monthlySlice(opp) : 0), 0);
         const prob = (opp.Probability ?? 0) / 100;
-        const slice = fyBarType === 'expected' ? full * prob : full * (1 - prob);
+        const slice = fyBarType === 'expected' ? full * prob : full;
         return { opp, slice };
       });
   })().filter(({ slice }) => slice > 0).sort((a, b) => b.slice - a.slice);

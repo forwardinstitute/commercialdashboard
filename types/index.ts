@@ -41,7 +41,7 @@ export interface AdvisoryOpportunity {
   End_DateAll__c: string | null;
   Number_of_Months__c: number | null;
   Organisation_Sector__c: string | null;
-  Account?: { Name: string };
+  Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
 }
 
@@ -58,7 +58,7 @@ export interface ProgrammeOpportunity {
   CloseDate: string | null;
   Total_Places__c: number | null;
   Organisation_Sector__c: string | null;
-  Account?: { Name: string };
+  Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
 }
 
@@ -94,6 +94,50 @@ export interface ProgrammeGroup {
   totalExpected: number;
   totalPotential: number;
   months: MonthlyData[];
+}
+
+// ─── Organisations ────────────────────────────────────────────────────────────
+
+// Account record — custom target fields are optional until created in SF.
+// Fields to create: Advisory_FY_Target__c (Currency), Programmes_FY_Target__c (Currency),
+// FY_Target__c (Formula Currency = sum), Realistic_Target_Pct__c (Percent 0-100)
+export interface OrganisationAccount {
+  Id: string;
+  Name: string;
+  // Add below once fields exist in Salesforce:
+  Advisory_FY_Target__c?: number | null;
+  Programmes_FY_Target__c?: number | null;
+  FY_Target__c?: number | null;
+  Realistic_Target_Pct__c?: number | null;
+}
+
+export interface OrganisationSummary {
+  accountId: string;
+  name: string;
+  sector: string;
+  realisticPct: number | null;         // Realistic_Target_Pct__c e.g. 80
+  // Advisory
+  advisoryTarget: number | null;
+  advisoryRealisticTarget: number | null;
+  advisoryConfirmed: number;
+  advisoryExpected: number;
+  advisoryPipeline: number;
+  // Programmes
+  programmesTarget: number | null;
+  programmesRealisticTarget: number | null;
+  programmesConfirmed: number;
+  programmesExpected: number;
+  programmesPipeline: number;
+  // Combined
+  combinedTarget: number | null;
+  combinedRealisticTarget: number | null;
+  combinedConfirmed: number;
+  combinedExpected: number;
+}
+
+export interface OrganisationsData {
+  organisations: OrganisationSummary[];
+  lastUpdated: string;
 }
 
 export interface DashboardData {
