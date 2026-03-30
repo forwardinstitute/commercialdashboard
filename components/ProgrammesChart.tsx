@@ -8,10 +8,10 @@ import {
 import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
 
 // Pure helper — duplicated here to avoid importing a server-side module into a client component.
-// Fellowship must match 'Fellowship Programme 2026' specifically.
+// Matches any fellowship cohort year so LY opps (e.g. Fellowship Programme 2025) classify correctly.
 function getProgrammeType(name: string): Exclude<ProgrammeType, 'all'> {
   const n = name.toLowerCase();
-  if (n.includes('fellowship programme 2026')) return 'fellowship';
+  if (n.includes('fellowship programme')) return 'fellowship';
   if (n.includes('exchange'))   return 'exchange';
   if (n.includes('leading through disruption') || n.includes('disruption')) return 'ltd';
   return 'other';
