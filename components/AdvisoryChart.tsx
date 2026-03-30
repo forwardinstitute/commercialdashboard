@@ -424,93 +424,101 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            {viewMode === 'stage' ? (
-              <>
-                <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={32}
-                     stackId="income" radius={[0, 0, 0, 0]}
-                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#195e47"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                  ))}
-                </Bar>
-                <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
-                     stackId="income"
-                     radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
-                     onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#85d1e3"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                  ))}
-                </Bar>
-                {showPossible && (
-                  <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
-                       stackId="income" radius={[4, 4, 0, 0]}
-                       onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
-                    {chartData.map((entry) => (
-                      <Cell key={entry.monthDate} fill="#ffcc12"
-                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                    ))}
-                  </Bar>
-                )}
-              </>
-            ) : (
-              <>
-                <Bar dataKey="secPrivate" name="Private" maxBarSize={32}
-                     stackId="income" radius={[0, 0, 0, 0]}
-                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                  {sectorChartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#195e47"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                  ))}
-                </Bar>
-                <Bar dataKey="secPublic" name="Public" maxBarSize={32}
-                     stackId="income" radius={[0, 0, 0, 0]}
-                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                  {sectorChartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#85d1e3"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                  ))}
-                </Bar>
-                <Bar dataKey="secSocial" name="Social" maxBarSize={32}
-                     stackId="income" radius={[0, 0, 0, 0]}
-                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                  {sectorChartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#ffcc12"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                  ))}
-                </Bar>
-                <Bar dataKey="secOther" name="Other" maxBarSize={32}
-                     stackId="income"
-                     radius={(!showSectorExpected && !showPossible) ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                  {sectorChartData.map((entry) => (
-                    <Cell key={entry.monthDate} fill="#c4b8a8"
-                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                  ))}
-                </Bar>
-                {showSectorExpected && (
-                  <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
-                       stackId="income"
-                       radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
-                       onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
-                    {sectorChartData.map((entry) => (
-                      <Cell key={entry.monthDate} fill="#b8a898"
-                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                    ))}
-                  </Bar>
-                )}
-                {showPossible && (
-                  <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
-                       stackId="income" radius={[4, 4, 0, 0]}
-                       onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
-                    {sectorChartData.map((entry) => (
-                      <Cell key={entry.monthDate} fill="#d4ccc4"
-                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                    ))}
-                  </Bar>
-                )}
-              </>
+            {/* Stage view bars */}
+            {viewMode === 'stage' && (
+              <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={32}
+                   stackId="income" radius={[0, 0, 0, 0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#195e47"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'stage' && (
+              <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
+                   stackId="income"
+                   radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                   onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#85d1e3"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'stage' && showPossible && (
+              <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
+                   stackId="income" radius={[4, 4, 0, 0]}
+                   onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
+                {chartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#ffcc12"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
+            )}
+
+            {/* Sector view bars */}
+            {viewMode === 'sector' && (
+              <Bar dataKey="secPrivate" name="Private" maxBarSize={32}
+                   stackId="income" radius={[0, 0, 0, 0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#195e47"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'sector' && (
+              <Bar dataKey="secPublic" name="Public" maxBarSize={32}
+                   stackId="income" radius={[0, 0, 0, 0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#85d1e3"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'sector' && (
+              <Bar dataKey="secSocial" name="Social" maxBarSize={32}
+                   stackId="income" radius={[0, 0, 0, 0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#ffcc12"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'sector' && (
+              <Bar dataKey="secOther" name="Other" maxBarSize={32}
+                   stackId="income"
+                   radius={(!showSectorExpected && !showPossible) ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#c4b8a8"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'sector' && showSectorExpected && (
+              <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
+                   stackId="income"
+                   radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                   onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#b8a898"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
+            )}
+            {viewMode === 'sector' && showPossible && (
+              <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
+                   stackId="income" radius={[4, 4, 0, 0]}
+                   onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
+                {sectorChartData.map((entry) => (
+                  <Cell key={entry.monthDate} fill="#d4ccc4"
+                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                ))}
+              </Bar>
             )}
 
             <Line
