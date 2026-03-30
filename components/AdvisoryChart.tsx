@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
@@ -109,6 +109,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const [showPossible, setShowPossible]   = useState(false);
   const [showFullYear, setShowFullYear]   = useState(false);
   const [showCumulative, setShowCumulative] = useState(false);
+  const [viewMode, setViewMode]           = useState<'stage' | 'sector'>('stage');
+  const [showSectorExpected, setShowSectorExpected] = useState(false);
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
   const [fyBarType, setFyBarType]   = useState<BarType>('confirmed');
 
@@ -120,6 +122,27 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
     // Possible = full opportunity amount minus expected (the upside ceiling)
     possibleBar:  (!d.isPast || d.isCurrentMonth) ? d.potential   : 0,
   }));
+
+  // Sector view: per-month confirmed income broken down by sector
+  const sectorChartData = useMemo(() => data.map(d => {
+    const confirmed = opportunities.filter(
+      opp => opp.StageName === 'Confirmed' && coversMonth(opp, d.monthDate)
+    );
+    const sum = (sector: string | null) => confirmed
+      .filter(opp => sector
+        ? oppSector(opp) === sector
+        : !['Private', 'Public', 'Social'].includes(oppSector(opp)))
+      .reduce((s, opp) => s + monthlySlice(opp), 0);
+    return {
+      ...d,
+      secPrivate:  sum('Private'),
+      secPublic:   sum('Public'),
+      secSocial:   sum('Social'),
+      secOther:    sum(null),
+      expectedBar: (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
+      possibleBar: (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
+    };
+  }), [data, opportunities]);
 
   const selectedMonthData = selection
     ? data.find(d => d.monthDate === selection.monthDate)
@@ -234,25 +257,70 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           Monthly Income vs Target
         </h2>
         <div className="flex items-center flex-wrap gap-x-4 gap-y-2 text-xs font-[Geist] text-[#8a7a6a]">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm inline-block bg-[#195e47]" />
-            Confirmed
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" />
-            Expected
-          </span>
-          <button
-            onClick={() => setShowPossible(v => !v)}
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
-              showPossible
-                ? 'border-[#ffcc12] bg-[#fffbe6] text-[#212122]'
-                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
-            }`}
-          >
-            <span className="w-3 h-3 rounded-sm inline-block bg-[#ffcc12]" />
-            Possible
-          </button>
+          {viewMode === 'stage' ? (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#195e47]" />
+                Confirmed
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" />
+                Expected
+              </span>
+              <button
+                onClick={() => setShowPossible(v => !v)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                  showPossible
+                    ? 'border-[#ffcc12] bg-[#fffbe6] text-[#212122]'
+                    : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#ffcc12]" />
+                Possible
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#195e47]" />
+                Private
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" />
+                Public
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#ffcc12]" />
+                Social
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#c4b8a8]" />
+                Other
+              </span>
+              <button
+                onClick={() => setShowSectorExpected(v => !v)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                  showSectorExpected
+                    ? 'border-[#b8a898] bg-[#f0ebe4] text-[#212122]'
+                    : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#b8a898]" />
+                + Expected
+              </button>
+              <button
+                onClick={() => setShowPossible(v => !v)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                  showPossible
+                    ? 'border-[#d4ccc4] bg-[#f5f2ef] text-[#212122]'
+                    : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                }`}
+              >
+                <span className="w-3 h-3 rounded-sm inline-block bg-[#d4ccc4]" />
+                + Possible
+              </button>
+            </>
+          )}
           <span className="flex items-center gap-1.5">
             <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
             Target
@@ -267,6 +335,16 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           >
             <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px dotted #8a7a6a' }} />
             Last year
+          </button>
+          <button
+            onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); }}
+            className={`px-2 py-1 rounded-md border transition-colors ${
+              viewMode === 'sector'
+                ? 'border-[#195e47] bg-[#195e47] text-[#fcf2e3]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            Sectors
           </button>
           <button
             onClick={() => { setShowFullYear(v => !v); setSelection(null); }}
@@ -329,7 +407,10 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             )}
           </ComposedChart>
         ) : (
-          <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+          <ComposedChart
+            data={viewMode === 'sector' ? sectorChartData : chartData}
+            margin={{ top: 4, right: 8, bottom: 4, left: 8 }}
+          >
             <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
             <XAxis
               dataKey="month"
@@ -343,34 +424,93 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={32}
-                 stackId="income" radius={[0, 0, 0, 0]}
-                 onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-              {chartData.map((entry) => (
-                <Cell key={entry.monthDate} fill="#195e47"
-                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-              ))}
-            </Bar>
-
-            <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
-                 stackId="income"
-                 radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
-                 onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
-              {chartData.map((entry) => (
-                <Cell key={entry.monthDate} fill="#85d1e3"
-                  opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-              ))}
-            </Bar>
-
-            {showPossible && (
-              <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
-                   stackId="income" radius={[4, 4, 0, 0]}
-                   onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
-                {chartData.map((entry) => (
-                  <Cell key={entry.monthDate} fill="#ffcc12"
-                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                ))}
-              </Bar>
+            {viewMode === 'stage' ? (
+              <>
+                <Bar dataKey="confirmedBar" name="Confirmed" maxBarSize={32}
+                     stackId="income" radius={[0, 0, 0, 0]}
+                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#195e47"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                  ))}
+                </Bar>
+                <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
+                     stackId="income"
+                     radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                     onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#85d1e3"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                  ))}
+                </Bar>
+                {showPossible && (
+                  <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
+                       stackId="income" radius={[4, 4, 0, 0]}
+                       onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
+                    {chartData.map((entry) => (
+                      <Cell key={entry.monthDate} fill="#ffcc12"
+                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                    ))}
+                  </Bar>
+                )}
+              </>
+            ) : (
+              <>
+                <Bar dataKey="secPrivate" name="Private" maxBarSize={32}
+                     stackId="income" radius={[0, 0, 0, 0]}
+                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                  {sectorChartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#195e47"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                  ))}
+                </Bar>
+                <Bar dataKey="secPublic" name="Public" maxBarSize={32}
+                     stackId="income" radius={[0, 0, 0, 0]}
+                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                  {sectorChartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#85d1e3"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                  ))}
+                </Bar>
+                <Bar dataKey="secSocial" name="Social" maxBarSize={32}
+                     stackId="income" radius={[0, 0, 0, 0]}
+                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                  {sectorChartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#ffcc12"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                  ))}
+                </Bar>
+                <Bar dataKey="secOther" name="Other" maxBarSize={32}
+                     stackId="income"
+                     radius={(!showSectorExpected && !showPossible) ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                     onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                  {sectorChartData.map((entry) => (
+                    <Cell key={entry.monthDate} fill="#c4b8a8"
+                      opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                  ))}
+                </Bar>
+                {showSectorExpected && (
+                  <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
+                       stackId="income"
+                       radius={showPossible ? [0, 0, 0, 0] : [4, 4, 0, 0]}
+                       onClick={makeClickHandler('expected')} style={{ cursor: 'pointer' }}>
+                    {sectorChartData.map((entry) => (
+                      <Cell key={entry.monthDate} fill="#b8a898"
+                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                    ))}
+                  </Bar>
+                )}
+                {showPossible && (
+                  <Bar dataKey="possibleBar" name="Possible" maxBarSize={32}
+                       stackId="income" radius={[4, 4, 0, 0]}
+                       onClick={makeClickHandler('possible')} style={{ cursor: 'pointer' }}>
+                    {sectorChartData.map((entry) => (
+                      <Cell key={entry.monthDate} fill="#d4ccc4"
+                        opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                    ))}
+                  </Bar>
+                )}
+              </>
             )}
 
             <Line
@@ -379,7 +519,6 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
               dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
               strokeDasharray="6 3"
             />
-
             {showLY && (
               <Line
                 type="monotone" dataKey="confirmedLY" name="Last year"
