@@ -1,3 +1,9 @@
 {
-  "regions": ["lhr1"]
+  "regions": ["lhr1"],
+  "crons": [
+    {
+      "path": "/api/snapshot",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }
