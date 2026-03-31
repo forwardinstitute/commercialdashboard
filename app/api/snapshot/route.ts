@@ -58,23 +58,29 @@ export async function GET(_req: NextRequest) {
     let advExpected  = 0;
     let advPossible  = 0;
 
-    const sectorTotals: Record<string, { confirmed: number; expected: number; possible: number }> = {};
+    // stream × sector matrix: key is `stream|sector`
+    const streamSectorTotals: Record<string, { stream: string; sector: string; confirmed: number; expected: number; possible: number }> = {};
+
+    function getStreamSector(stream: string, sector: string) {
+      const key = `${stream}|${sector}`;
+      if (!streamSectorTotals[key]) streamSectorTotals[key] = { stream, sector, confirmed: 0, expected: 0, possible: 0 };
+      return streamSectorTotals[key];
+    }
 
     for (const opp of advisoryOpps) {
       const amount = advisoryFYAmount(opp);
       const sector = opp.Organisation_Sector__c ?? 'Unknown';
-
-      if (!sectorTotals[sector]) sectorTotals[sector] = { confirmed: 0, expected: 0, possible: 0 };
+      const cell   = getStreamSector('advisory', sector);
 
       if (opp.StageName === 'Confirmed') {
-        advConfirmed              += amount;
-        sectorTotals[sector].confirmed += amount;
+        advConfirmed     += amount;
+        cell.confirmed   += amount;
       } else if (opp.StageName !== 'Opportunity lost') {
-        const prob                 = (opp.Probability ?? 0) / 100;
-        advExpected               += amount * prob;
-        advPossible               += amount * (1 - prob);
-        sectorTotals[sector].expected += amount * prob;
-        sectorTotals[sector].possible += amount * (1 - prob);
+        const prob        = (opp.Probability ?? 0) / 100;
+        advExpected      += amount * prob;
+        advPossible      += amount * (1 - prob);
+        cell.expected    += amount * prob;
+        cell.possible    += amount * (1 - prob);
       }
     }
 
@@ -87,10 +93,11 @@ export async function GET(_req: NextRequest) {
 
     if (advError) throw new Error(`Advisory upsert failed: ${advError.message}`);
 
-    // ── Sectors ─────────────────────────────────────────────────────────────────
-    const sectorRows = Object.entries(sectorTotals).map(([sector, t]) => ({
+    // ── Sectors (stream × sector matrix) ────────────────────────────────────────
+    const sectorRows = Object.values(streamSectorTotals).map(t => ({
       snapshot_date: today,
-      sector,
+      stream:    t.stream,
+      sector:    t.sector,
       confirmed: Math.round(t.confirmed),
       expected:  Math.round(t.expected),
       possible:  Math.round(t.possible),
@@ -98,7 +105,7 @@ export async function GET(_req: NextRequest) {
 
     const { error: sectorError } = await supabase
       .from('sector_snapshots')
-      .upsert(sectorRows, { onConflict: 'snapshot_date,sector' });
+      .upsert(sectorRows, { onConflict: 'snapshot_date,stream,sector' });
 
     if (sectorError) throw new Error(`Sector upsert failed: ${sectorError.message}`);
 
@@ -119,15 +126,21 @@ export async function GET(_req: NextRequest) {
     for (const opp of filtered) {
       const amount = opp.Amount ?? 0;
       const type   = getProgrammeType(opp.Programme__r?.Name ?? '');
+      const sector = opp.Organisation_Sector__c ?? 'Unknown';
+      const cell   = getStreamSector(type, sector);
+
       if (opp.StageName === 'Confirmed') {
         totals.all.confirmed        += amount;
         totals[type].confirmed      += amount;
+        cell.confirmed              += amount;
       } else {
         const prob = (opp.Probability ?? 0) / 100;
         totals.all.expected         += amount * prob;
         totals[type].expected       += amount * prob;
         totals.all.possible         += amount * (1 - prob);
         totals[type].possible       += amount * (1 - prob);
+        cell.expected               += amount * prob;
+        cell.possible               += amount * (1 - prob);
       }
     }
 
@@ -149,7 +162,7 @@ export async function GET(_req: NextRequest) {
       success: true,
       date: today,
       advisory: { confirmed: Math.round(advConfirmed), expected: Math.round(advExpected), possible: Math.round(advPossible) },
-      sectors: sectorTotals,
+      sectors: streamSectorTotals,
       programmes: totals,
     });
   } catch (err) {
