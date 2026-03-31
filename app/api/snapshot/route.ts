@@ -42,14 +42,7 @@ function advisoryFYAmount(opp: AdvisoryOpportunity): number {
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
-export async function GET(req: NextRequest) {
-  // Protect with CRON_SECRET — Vercel sets this automatically and sends it as
-  // a Bearer token when triggering cron jobs.
-  const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function GET(_req: NextRequest) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
