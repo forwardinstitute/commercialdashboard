@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import ProgrammesChart from '@/components/ProgrammesChart';
+import PriceChangeAlert from '@/components/PriceChangeAlert';
 import { buildProgrammesData } from '@/lib/programmes';
+import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { ProgrammesData } from '@/types';
 
 async function getData(): Promise<{ data: ProgrammesData | null; error: string | null }> {
@@ -22,8 +24,16 @@ function fmtDate(iso: string) {
   });
 }
 
+async function getPriceChanges() {
+  try {
+    return await getConfirmedPriceChanges(30);
+  } catch {
+    return [];
+  }
+}
+
 export default async function ProgrammesPage() {
-  const { data, error } = await getData();
+  const [{ data, error }, priceChanges] = await Promise.all([getData(), getPriceChanges()]);
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
@@ -56,7 +66,10 @@ export default async function ProgrammesPage() {
             )}
           </div>
         ) : (
-          <ProgrammesChart data={data} />
+          <>
+            <PriceChangeAlert changes={priceChanges.filter(c => c.stream !== 'advisory')} />
+            <ProgrammesChart data={data} />
+          </>
         )}
       </main>
     </div>
