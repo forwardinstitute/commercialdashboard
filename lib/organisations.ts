@@ -47,7 +47,7 @@ function getOrCreate(
     advisoryPipeline:      0,
     advisoryPotential:     advPot,
     advisoryPotentialPct:  advPct,
-    advisoryWeighted,
+    advisoryWeighted:      advWeighted,
     programmesConfirmed:   0,
     programmesExpected:    0,
     programmesPipeline:    0,
