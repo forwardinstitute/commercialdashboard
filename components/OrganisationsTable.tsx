@@ -84,8 +84,8 @@ function buildSectorRows(orgs: OrganisationSummary[]): SectorRow[] {
     row.confirmed += org.combinedConfirmed;
     row.expected  += org.combinedExpected;
     row.pipeline  += (org.advisoryPipeline + org.programmesPipeline);
-    if (org.combinedTarget    !== null) row.target   = (row.target   ?? 0) + org.combinedTarget;
-    if (org.combinedRealisticTarget !== null) row.realistic = (row.realistic ?? 0) + org.combinedRealisticTarget;
+    if (org.totalPotential !== null) row.target   = (row.target   ?? 0) + org.totalPotential;
+    if (org.totalWeighted  !== null) row.realistic = (row.realistic ?? 0) + org.totalWeighted;
   }
   return [...map.values()].sort((a, b) => b.confirmed - a.confirmed);
 }
@@ -113,8 +113,8 @@ export default function OrganisationsTable({ data }: Props) {
       if (sortKey === 'confirmed') return b.combinedConfirmed - a.combinedConfirmed;
       if (sortKey === 'expected')  return b.combinedExpected  - a.combinedExpected;
       if (sortKey === 'target') {
-        const ta = a.combinedTarget ?? -1;
-        const tb = b.combinedTarget ?? -1;
+        const ta = a.totalPotential ?? -1;
+        const tb = b.totalPotential ?? -1;
         return tb - ta;
       }
       return 0;
@@ -208,8 +208,8 @@ export default function OrganisationsTable({ data }: Props) {
                     </div>
                     <ProgressBar
                       confirmed={org.combinedConfirmed}
-                      target={org.combinedTarget}
-                      realistic={org.combinedRealisticTarget}
+                      target={org.totalPotential}
+                      realistic={org.totalWeighted}
                     />
                   </div>
 

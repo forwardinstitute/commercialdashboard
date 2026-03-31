@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { buildOrganisationsData } from '@/lib/organisations';
+import OrganisationsSectorChart from '@/components/OrganisationsSectorChart';
 import OrganisationsTable from '@/components/OrganisationsTable';
 
 export default async function OrganisationsPage() {
@@ -18,6 +19,7 @@ export default async function OrganisationsPage() {
               FY 2026/27 · Advisory and Programmes income by organisation
             </p>
           </div>
+          <OrganisationsSectorChart sectors={data.sectors} />
           <OrganisationsTable data={data} />
         </div>
       </main>

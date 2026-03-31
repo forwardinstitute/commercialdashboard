@@ -98,45 +98,63 @@ export interface ProgrammeGroup {
 
 // ─── Organisations ────────────────────────────────────────────────────────────
 
-// Account record — custom target fields are optional until created in SF.
-// Fields to create: Advisory_FY_Target__c (Currency), Programmes_FY_Target__c (Currency),
-// FY_Target__c (Formula Currency = sum), Realistic_Target_Pct__c (Percent 0-100)
 export interface OrganisationAccount {
   Id: string;
   Name: string;
-  // Add below once fields exist in Salesforce:
-  Advisory_FY_Target__c?: number | null;
-  Programmes_FY_Target__c?: number | null;
-  FY_Target__c?: number | null;
-  Realistic_Target_Pct__c?: number | null;
+  Advisory_Potential__c?: number | null;
+  Advisory_Potential_Percent__c?: number | null;
+  Programme_Potential__c?: number | null;
+  Programme_Potential_Percent__c?: number | null;
 }
 
 export interface OrganisationSummary {
   accountId: string;
   name: string;
   sector: string;
-  realisticPct: number | null;         // Realistic_Target_Pct__c e.g. 80
-  // Advisory
-  advisoryTarget: number | null;
-  advisoryRealisticTarget: number | null;
+  // Advisory income
   advisoryConfirmed: number;
   advisoryExpected: number;
   advisoryPipeline: number;
-  // Programmes
-  programmesTarget: number | null;
-  programmesRealisticTarget: number | null;
+  // Advisory potential (from Account fields)
+  advisoryPotential: number | null;
+  advisoryPotentialPct: number | null;
+  advisoryWeighted: number | null;       // potential × pct / 100
+  // Programmes income
   programmesConfirmed: number;
   programmesExpected: number;
   programmesPipeline: number;
+  // Programmes potential (from Account fields)
+  programmePotential: number | null;
+  programmePotentialPct: number | null;
+  programmeWeighted: number | null;      // potential × pct / 100
   // Combined
-  combinedTarget: number | null;
-  combinedRealisticTarget: number | null;
   combinedConfirmed: number;
   combinedExpected: number;
+  totalPotential: number | null;         // advisory + programme potential
+  totalWeighted: number | null;          // advisory + programme weighted
+}
+
+export interface SectorSummary {
+  sector: string;
+  // Income
+  advisoryConfirmed: number;
+  advisoryExpected: number;
+  programmeConfirmed: number;
+  programmeExpected: number;
+  combinedConfirmed: number;
+  combinedExpected: number;
+  // Potential
+  advisoryPotential: number;
+  advisoryWeighted: number;
+  programmePotential: number;
+  programmeWeighted: number;
+  totalPotential: number;
+  totalWeighted: number;
 }
 
 export interface OrganisationsData {
   organisations: OrganisationSummary[];
+  sectors: SectorSummary[];
   lastUpdated: string;
 }
 

@@ -148,11 +148,6 @@ export default function OrganisationDetail({ org, advisoryOpps, programmeOpps }:
             </h1>
             <div className="flex items-center gap-2 mt-2">
               <SectorBadge sector={org.sector} />
-              {org.realisticPct !== null && (
-                <span className="text-xs text-[#8a7a6a] font-[Geist]">
-                  {org.realisticPct}% realistic target multiplier
-                </span>
-              )}
             </div>
           </div>
           <div className="text-right">
@@ -174,55 +169,58 @@ export default function OrganisationDetail({ org, advisoryOpps, programmeOpps }:
         <div className="fi-card !py-4">
           <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-wide mb-2">Advisory</p>
           <p className="text-xl font-bold text-[#195e47] font-[Geist]">{fmtFull(org.advisoryConfirmed)}</p>
-          {org.advisoryTarget ? (
+          {org.advisoryPotential ? (
             <>
               <div className="relative h-2 bg-[#e8ddd0] rounded-full overflow-visible mt-2">
-                {org.advisoryRealisticTarget && (
+                {org.advisoryWeighted && (
                   <div className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-[#dd6945] rounded-full z-10"
-                       style={{ left: `${Math.min((org.advisoryRealisticTarget / org.advisoryTarget) * 100, 100)}%` }} />
+                       style={{ left: `${Math.min((org.advisoryWeighted / org.advisoryPotential) * 100, 100)}%` }} />
                 )}
                 <div className="h-full rounded-full bg-[#195e47]"
-                     style={{ width: `${Math.min((org.advisoryConfirmed / org.advisoryTarget) * 100, 100)}%` }} />
+                     style={{ width: `${Math.min((org.advisoryConfirmed / org.advisoryPotential) * 100, 100)}%` }} />
               </div>
-              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.advisoryTarget)} target</p>
+              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.advisoryPotential)} potential</p>
+              {org.advisoryWeighted && <p className="text-xs text-[#dd6945] font-[Geist]">{fmtFull(org.advisoryWeighted)} weighted</p>}
             </>
-          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No target set</p>}
+          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No potential set</p>}
         </div>
 
         <div className="fi-card !py-4">
           <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-wide mb-2">Programmes</p>
           <p className="text-xl font-bold text-[#195e47] font-[Geist]">{fmtFull(org.programmesConfirmed)}</p>
-          {org.programmesTarget ? (
+          {org.programmePotential ? (
             <>
               <div className="relative h-2 bg-[#e8ddd0] rounded-full overflow-visible mt-2">
-                {org.programmesRealisticTarget && (
+                {org.programmeWeighted && (
                   <div className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-[#dd6945] rounded-full z-10"
-                       style={{ left: `${Math.min((org.programmesRealisticTarget / org.programmesTarget) * 100, 100)}%` }} />
+                       style={{ left: `${Math.min((org.programmeWeighted / org.programmePotential) * 100, 100)}%` }} />
                 )}
                 <div className="h-full rounded-full bg-[#195e47]"
-                     style={{ width: `${Math.min((org.programmesConfirmed / org.programmesTarget) * 100, 100)}%` }} />
+                     style={{ width: `${Math.min((org.programmesConfirmed / org.programmePotential) * 100, 100)}%` }} />
               </div>
-              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.programmesTarget)} target</p>
+              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.programmePotential)} potential</p>
+              {org.programmeWeighted && <p className="text-xs text-[#dd6945] font-[Geist]">{fmtFull(org.programmeWeighted)} weighted</p>}
             </>
-          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No target set</p>}
+          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No potential set</p>}
         </div>
 
         <div className="fi-card !py-4 border-[#195e47]">
           <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-wide mb-2">Combined</p>
           <p className="text-xl font-bold text-[#212122] font-[Geist]">{fmtFull(org.combinedConfirmed)}</p>
-          {org.combinedTarget ? (
+          {org.totalPotential ? (
             <>
               <div className="relative h-2 bg-[#e8ddd0] rounded-full overflow-visible mt-2">
-                {org.combinedRealisticTarget && (
+                {org.totalWeighted && (
                   <div className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-[#dd6945] rounded-full z-10"
-                       style={{ left: `${Math.min((org.combinedRealisticTarget / org.combinedTarget) * 100, 100)}%` }} />
+                       style={{ left: `${Math.min((org.totalWeighted / org.totalPotential) * 100, 100)}%` }} />
                 )}
                 <div className="h-full rounded-full bg-[#212122]"
-                     style={{ width: `${Math.min((org.combinedConfirmed / org.combinedTarget) * 100, 100)}%` }} />
+                     style={{ width: `${Math.min((org.combinedConfirmed / org.totalPotential) * 100, 100)}%` }} />
               </div>
-              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.combinedTarget)} target</p>
+              <p className="text-xs text-[#8a7a6a] font-[Geist] mt-1">of {fmtFull(org.totalPotential)} potential</p>
+              {org.totalWeighted && <p className="text-xs text-[#dd6945] font-[Geist]">{fmtFull(org.totalWeighted)} weighted</p>}
             </>
-          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No target set</p>}
+          ) : <p className="text-xs text-[#b0a090] font-[Geist] mt-1 italic">No potential set</p>}
         </div>
       </div>
 

@@ -164,15 +164,14 @@ export async function getProgrammeOpportunitiesLY(): Promise<ProgrammeOpportunit
 
 // ─── Organisations ────────────────────────────────────────────────────────────
 
-// Fetch Account records for partner organisations.
-// TODO: once these fields are created in Salesforce, add them to the SELECT:
-//   Advisory_FY_Target__c, Programmes_FY_Target__c,
-//   FY_Target__c, Realistic_Target_Pct__c
+// Fetch Account records for partner organisations including potential target fields.
 export async function getPartnerAccounts(accountIds: string[]): Promise<OrganisationAccount[]> {
   if (accountIds.length === 0) return [];
   const idList = accountIds.map(id => `'${id}'`).join(',');
   const soql = `
-    SELECT Id, Name
+    SELECT Id, Name,
+      Advisory_Potential__c, Advisory_Potential_Percent__c,
+      Programme_Potential__c, Programme_Potential_Percent__c
     FROM Account
     WHERE Id IN (${idList})
     ORDER BY Name ASC
