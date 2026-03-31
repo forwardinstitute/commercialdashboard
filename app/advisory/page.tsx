@@ -114,11 +114,11 @@ export default async function AdvisoryPage() {
               </div>
             </div>
 
-            {/* Confirmed value changes alert */}
-            <PriceChangeAlert changes={priceChanges} />
-
             {/* Monthly chart with drill-down */}
             <AdvisoryChart data={data.months} opportunities={data.opportunities} />
+
+            {/* Confirmed value changes alert */}
+            <PriceChangeAlert changes={priceChanges} />
           </>
         )}
       </main>

@@ -67,8 +67,8 @@ export default async function ProgrammesPage() {
           </div>
         ) : (
           <>
-            <PriceChangeAlert changes={priceChanges.filter(c => c.stream !== 'advisory')} />
             <ProgrammesChart data={data} />
+            <PriceChangeAlert changes={priceChanges.filter(c => c.stream !== 'advisory')} />
           </>
         )}
       </main>
