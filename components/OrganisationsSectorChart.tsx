@@ -37,7 +37,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return (
     <div className="bg-white border border-[#e8ddd0] rounded-xl p-3 text-sm shadow-lg min-w-[200px]">
       <p className="font-bold mb-2 text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{label}</p>
-      {payload.map((p: any) =>
+      {payload.filter((p: any) => p.name !== 'Weighted potential').map((p: any) =>
         p.value > 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
             <span style={{ color: p.fill ?? p.color }}>{p.name}</span>
@@ -149,7 +149,7 @@ export default function OrganisationsSectorChart({ sectors }: Props) {
           <span className="w-3 h-3 rounded-sm inline-block bg-[#85d1e3]" /> Expected
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm inline-block bg-[#e8ddd0]" /> Headroom
+          <span className="w-3 h-3 rounded-sm inline-block bg-[#e8ddd0]" /> Remaining potential
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
@@ -183,8 +183,8 @@ export default function OrganisationsSectorChart({ sectors }: Props) {
             ))}
           </Bar>
 
-          {/* Headroom to total potential ceiling */}
-          <Bar dataKey="gap" name="Headroom" stackId="s" maxBarSize={56} radius={[4, 4, 0, 0]}
+          {/* Remaining potential to total potential ceiling */}
+          <Bar dataKey="gap" name="Remaining potential" stackId="s" maxBarSize={56} radius={[4, 4, 0, 0]}
                fill="#e8ddd0" fillOpacity={0.6} />
 
           {/* Weighted potential as a dotted line */}

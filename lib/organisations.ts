@@ -11,6 +11,52 @@ import {
   SectorSummary,
 } from '@/types';
 
+// FY 2026/27 months for advisory proration
+const FY_MONTHS = [
+  { year: 2026, month: 2  }, // Mar
+  { year: 2026, month: 3  }, // Apr
+  { year: 2026, month: 4  }, // May
+  { year: 2026, month: 5  }, // Jun
+  { year: 2026, month: 6  }, // Jul
+  { year: 2026, month: 7  }, // Aug
+  { year: 2026, month: 8  }, // Sep
+  { year: 2026, month: 9  }, // Oct
+  { year: 2026, month: 10 }, // Nov
+  { year: 2026, month: 11 }, // Dec
+  { year: 2027, month: 0  }, // Jan
+  { year: 2027, month: 1  }, // Feb
+];
+
+// Does an advisory opp cover a given calendar month?
+function advisoryCoversMonth(opp: { Start_Date_All__c: string | null; End_DateAll__c: string | null }, year: number, month: number): boolean {
+  if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return false;
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month + 1, 0);
+  const oppStart   = new Date(opp.Start_Date_All__c);
+  const oppEnd     = new Date(opp.End_DateAll__c);
+  return oppStart <= monthEnd && oppEnd >= monthStart;
+}
+
+// Prorated monthly slice for an advisory opp
+function advisoryMonthlySlice(opp: { Amount: number | null; Number_of_Months__c: number | null; Start_Date_All__c: string | null; End_DateAll__c: string | null }): number {
+  if (!opp.Amount || opp.Amount <= 0) return 0;
+  let months = opp.Number_of_Months__c;
+  if (!months || months <= 0) {
+    if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return 0;
+    const s = new Date(opp.Start_Date_All__c);
+    const e = new Date(opp.End_DateAll__c);
+    months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+  }
+  return opp.Amount / months;
+}
+
+// FY-prorated total for an advisory opp (only the portion falling within FY 2026/27)
+function advisoryFYAmount(opp: { Amount: number | null; Number_of_Months__c: number | null; Start_Date_All__c: string | null; End_DateAll__c: string | null }): number {
+  const slice = advisoryMonthlySlice(opp);
+  if (slice === 0) return 0;
+  return FY_MONTHS.filter(({ year, month }) => advisoryCoversMonth(opp, year, month)).length * slice;
+}
+
 function isOldFellowship(o: ProgrammeOpportunity): boolean {
   const name = (o.Programme__r?.Name ?? '').toLowerCase();
   return name.includes('fellowship') && !name.includes('fellowship programme 2026');
@@ -127,7 +173,7 @@ export async function buildOrganisationsData(): Promise<OrganisationsData> {
     if (!opp.Account?.Id) continue;
     const org = getOrCreate(orgMap, opp.Account.Id, opp.Account.Name,
       opp.Organisation_Sector__c ?? 'Unknown', accountMap.get(opp.Account.Id));
-    const amount = opp.Amount ?? 0;
+    const amount = advisoryFYAmount(opp);
     if (opp.StageName === 'Confirmed') {
       org.advisoryConfirmed += amount;
     } else if (opp.StageName !== 'Opportunity lost') {
