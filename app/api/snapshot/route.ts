@@ -291,23 +291,66 @@ export async function GET(_req: NextRequest) {
       total_weighted:       Math.round(o.total_weighted),
     }));
 
+    // ── Individual opp snapshots ──────────────────────────────────────────────
+    const oppRows = [
+      ...advisoryOpps.map(opp => ({
+        snapshot_date: today,
+        opp_id:        opp.Id,
+        opp_name:      opp.Name,
+        stream:        'advisory',
+        stage_name:    opp.StageName,
+        amount:        Math.round(opp.Amount ?? 0),
+        fy_amount:     Math.round(FY_MONTHS.reduce((sum, { year, month }) =>
+                         advisoryCoversMonth(opp, year, month) ? sum + advisoryMonthlySlice(opp) : sum, 0)),
+        probability:   opp.Probability ?? 0,
+        sector:        opp.Organisation_Sector__c ?? 'Unknown',
+        account_id:    opp.Account?.Id ?? '',
+        account_name:  opp.Account?.Name ?? '',
+        start_date:    opp.Start_Date_All__c ?? null,
+        end_date:      opp.End_DateAll__c ?? null,
+        num_months:    opp.Number_of_Months__c ?? null,
+        close_date:    null,
+        places:        0,
+      })),
+      ...programmeOpps.map(opp => ({
+        snapshot_date: today,
+        opp_id:        opp.Id,
+        opp_name:      opp.Name,
+        stream:        getProgrammeType(opp.Programme__r?.Name ?? ''),
+        stage_name:    opp.StageName,
+        amount:        Math.round(opp.Amount ?? 0),
+        fy_amount:     Math.round(opp.Amount ?? 0),
+        probability:   opp.Probability ?? 0,
+        sector:        opp.Organisation_Sector__c ?? 'Unknown',
+        account_id:    opp.Account?.Id ?? '',
+        account_name:  opp.Account?.Name ?? '',
+        start_date:    null,
+        end_date:      null,
+        num_months:    null,
+        close_date:    opp.CloseDate ?? null,
+        places:        opp.Total_Places__c ?? 0,
+      })),
+    ];
+
     // ── Upserts ───────────────────────────────────────────────────────────────
-    const [r1, r2, r3, r4] = await Promise.all([
+    const [r1, r2, r3, r4, r5] = await Promise.all([
       supabase.from('advisory_monthly_snapshots').upsert(advRows,    { onConflict: 'snapshot_date,pipeline_month' }),
       supabase.from('programme_monthly_snapshots').upsert(progRows,  { onConflict: 'snapshot_date,pipeline_month,programme_type' }),
       supabase.from('sector_monthly_snapshots').upsert([...sectorRows.values()].map(r => ({ snapshot_date: today, ...r, confirmed: Math.round(r.confirmed), expected: Math.round(r.expected), possible: Math.round(r.possible) })), { onConflict: 'snapshot_date,pipeline_month,stream,sector' }),
       supabase.from('org_snapshots').upsert(orgRows, { onConflict: 'snapshot_date,account_id' }),
+      supabase.from('opp_snapshots').upsert(oppRows, { onConflict: 'snapshot_date,opp_id' }),
     ]);
 
     if (r1.error) throw new Error(`Advisory upsert failed: ${r1.error.message}`);
     if (r2.error) throw new Error(`Programme upsert failed: ${r2.error.message}`);
     if (r3.error) throw new Error(`Sector upsert failed: ${r3.error.message}`);
     if (r4.error) throw new Error(`Org upsert failed: ${r4.error.message}`);
+    if (r5.error) throw new Error(`Opp upsert failed: ${r5.error.message}`);
 
     return NextResponse.json({
       success: true,
       date: today,
-      rows: { advisory: advRows.length, programmes: progRows.length, sectors: sectorRows.size, orgs: orgRows.length },
+      rows: { advisory: advRows.length, programmes: progRows.length, sectors: sectorRows.size, orgs: orgRows.length, opps: oppRows.length },
     });
 
   } catch (err) {
