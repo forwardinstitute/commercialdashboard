@@ -1,7 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import AdvisoryChart from '@/components/AdvisoryChart';
+import PriceChangeAlert from '@/components/PriceChangeAlert';
 import { buildAdvisoryData } from '@/lib/advisory';
+import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { AdvisoryData } from '@/types';
 
 async function getData(): Promise<{ data: AdvisoryData | null; error: string | null }> {
@@ -12,6 +14,14 @@ async function getData(): Promise<{ data: AdvisoryData | null; error: string | n
     const msg = e instanceof Error ? e.message : String(e);
     console.error('Advisory data error:', msg);
     return { data: null, error: msg };
+  }
+}
+
+async function getPriceChanges() {
+  try {
+    return await getConfirmedPriceChanges(30);
+  } catch {
+    return [];
   }
 }
 
@@ -31,7 +41,7 @@ function fmtDate(iso: string) {
 }
 
 export default async function AdvisoryPage() {
-  const { data, error } = await getData();
+  const [{ data, error }, priceChanges] = await Promise.all([getData(), getPriceChanges()]);
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
@@ -103,6 +113,9 @@ export default async function AdvisoryPage() {
                 )}
               </div>
             </div>
+
+            {/* Confirmed value changes alert */}
+            <PriceChangeAlert changes={priceChanges} />
 
             {/* Monthly chart with drill-down */}
             <AdvisoryChart data={data.months} opportunities={data.opportunities} />
