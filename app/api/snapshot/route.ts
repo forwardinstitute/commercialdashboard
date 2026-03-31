@@ -58,14 +58,23 @@ export async function GET(_req: NextRequest) {
     let advExpected  = 0;
     let advPossible  = 0;
 
+    const sectorTotals: Record<string, { confirmed: number; expected: number; possible: number }> = {};
+
     for (const opp of advisoryOpps) {
       const amount = advisoryFYAmount(opp);
+      const sector = opp.Organisation_Sector__c ?? 'Unknown';
+
+      if (!sectorTotals[sector]) sectorTotals[sector] = { confirmed: 0, expected: 0, possible: 0 };
+
       if (opp.StageName === 'Confirmed') {
-        advConfirmed += amount;
+        advConfirmed              += amount;
+        sectorTotals[sector].confirmed += amount;
       } else if (opp.StageName !== 'Opportunity lost') {
-        const prob    = (opp.Probability ?? 0) / 100;
-        advExpected  += amount * prob;
-        advPossible  += amount * (1 - prob);
+        const prob                 = (opp.Probability ?? 0) / 100;
+        advExpected               += amount * prob;
+        advPossible               += amount * (1 - prob);
+        sectorTotals[sector].expected += amount * prob;
+        sectorTotals[sector].possible += amount * (1 - prob);
       }
     }
 
@@ -77,6 +86,21 @@ export async function GET(_req: NextRequest) {
       );
 
     if (advError) throw new Error(`Advisory upsert failed: ${advError.message}`);
+
+    // ── Sectors ─────────────────────────────────────────────────────────────────
+    const sectorRows = Object.entries(sectorTotals).map(([sector, t]) => ({
+      snapshot_date: today,
+      sector,
+      confirmed: Math.round(t.confirmed),
+      expected:  Math.round(t.expected),
+      possible:  Math.round(t.possible),
+    }));
+
+    const { error: sectorError } = await supabase
+      .from('sector_snapshots')
+      .upsert(sectorRows, { onConflict: 'snapshot_date,sector' });
+
+    if (sectorError) throw new Error(`Sector upsert failed: ${sectorError.message}`);
 
     // ── Programmes ──────────────────────────────────────────────────────────────
     const programmeOpps = await getProgrammeOpportunities();
@@ -125,6 +149,7 @@ export async function GET(_req: NextRequest) {
       success: true,
       date: today,
       advisory: { confirmed: Math.round(advConfirmed), expected: Math.round(advExpected), possible: Math.round(advPossible) },
+      sectors: sectorTotals,
       programmes: totals,
     });
   } catch (err) {
