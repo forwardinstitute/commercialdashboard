@@ -100,6 +100,7 @@ interface Props { opportunities: ProgrammeOpportunity[]; }
 export default function ProgrammesPlacesView({ opportunities }: Props) {
   const [programme, setProgramme] = useState<Exclude<ProgrammeType, 'all' | 'other'>>('fellowship');
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'pricePerPlace', dir: 'desc' });
+  const [sectorStage, setSectorStage] = useState<string>('all'); // stage filter for the Sector Split card
 
   const opps = useMemo(
     () => opportunities.filter(o => getProgrammeType(o.Programme__r?.Name ?? '') === programme),
@@ -140,13 +141,16 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
   // ── Sector split ──────────────────────────────────────────────────────────────
   const sectorSplit = useMemo(() => {
     const acc: Record<string, number> = {};
-    for (const o of opps) for (const li of lineItems(o)) {
-      const bucket = productBucket(li.Product2?.ProductCode, li.Product2?.Name);
-      if (!bucket) continue;
-      acc[bucket] = (acc[bucket] ?? 0) + (li.Quantity ?? 0);
+    for (const o of opps) {
+      if (sectorStage !== 'all' && o.StageName !== sectorStage) continue;
+      for (const li of lineItems(o)) {
+        const bucket = productBucket(li.Product2?.ProductCode, li.Product2?.Name);
+        if (!bucket) continue;
+        acc[bucket] = (acc[bucket] ?? 0) + (li.Quantity ?? 0);
+      }
     }
     return PLACE_BUCKETS.map(b => ({ bucket: b, places: acc[b] ?? 0 })).filter(d => d.places > 0);
-  }, [opps]);
+  }, [opps, sectorStage]);
 
   // ── Price per place: list vs achieved, per paid sector ───────────────────────
   const priceBySector = useMemo(() => {
@@ -295,9 +299,21 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
 
             {/* ── Sector split ────────────────────────────────────────────────── */}
             <div className="fi-card">
-              <h2 className="text-lg font-bold text-[#212122] mb-4" style={{ fontFamily: 'Inria Serif, serif' }}>
+              <h2 className="text-lg font-bold text-[#212122] mb-3" style={{ fontFamily: 'Inria Serif, serif' }}>
                 Sector Split <span className="text-sm font-normal text-[#8a7a6a]">· {fmtPlaces(totalPlaces)} places</span>
               </h2>
+              {/* Stage filter — All shows the full pipeline, or drill to a single stage */}
+              <div className="flex items-center flex-wrap gap-1.5 mb-4">
+                {(['all', ...stages] as string[]).map(s => (
+                  <button key={s} onClick={() => setSectorStage(s)}
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-[Geist] border transition-colors ${
+                      sectorStage === s
+                        ? 'bg-[#212122] text-[#fcf2e3] border-[#212122]'
+                        : 'text-[#8a7a6a] border-[#e8ddd0] hover:bg-[#f5ebe0]'}`}>
+                    {s === 'all' ? 'All' : s}
+                  </button>
+                ))}
+              </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={sectorSplit} layout="vertical" margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" horizontal={false} />
