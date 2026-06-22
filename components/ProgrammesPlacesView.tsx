@@ -163,16 +163,21 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
   }, [opps, sectorStage]);
 
   // ── Price per place: list vs achieved, per paid sector ───────────────────────
+  // Only Confirmed + Expecting places — pricing on speculative (Possible/Hopeful)
+  // places would be misleading. stageRank >= 2 covers Expecting/Expected + Confirmed.
   const priceBySector = useMemo(() => {
     const acc: Record<string, { qty: number; actual: number; list: number }> = {};
-    for (const o of opps) for (const li of lineItems(o)) {
-      const bucket = productBucket(li.Product2?.ProductCode, li.Product2?.Name);
-      if (!bucket) continue;
-      const qty = li.Quantity ?? 0;
-      acc[bucket] ??= { qty: 0, actual: 0, list: 0 };
-      acc[bucket].qty += qty;
-      acc[bucket].actual += (li.UnitPrice ?? 0) * qty;
-      acc[bucket].list += (li.ListPrice ?? 0) * qty;
+    for (const o of opps) {
+      if (stageRank(o.StageName) < 2) continue;
+      for (const li of lineItems(o)) {
+        const bucket = productBucket(li.Product2?.ProductCode, li.Product2?.Name);
+        if (!bucket) continue;
+        const qty = li.Quantity ?? 0;
+        acc[bucket] ??= { qty: 0, actual: 0, list: 0 };
+        acc[bucket].qty += qty;
+        acc[bucket].actual += (li.UnitPrice ?? 0) * qty;
+        acc[bucket].list += (li.ListPrice ?? 0) * qty;
+      }
     }
     return PAID_SECTORS.filter(b => acc[b]?.qty).map(b => ({
       sector: b,
@@ -347,7 +352,7 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
           {/* ── Price per place: list vs actual ──────────────────────────────── */}
           <div className="fi-card">
             <h2 className="text-lg font-bold text-[#212122] mb-4" style={{ fontFamily: 'Inria Serif, serif' }}>
-              Price per Place <span className="text-sm font-normal text-[#8a7a6a]">· list vs achieved, by sector</span>
+              Price per Place <span className="text-sm font-normal text-[#8a7a6a]">· confirmed &amp; expected places · list vs achieved</span>
             </h2>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={priceBySector} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
