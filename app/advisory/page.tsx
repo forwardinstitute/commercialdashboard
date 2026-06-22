@@ -117,8 +117,8 @@ export default async function AdvisoryPage() {
             {/* Monthly chart with drill-down */}
             <AdvisoryChart data={data.months} opportunities={data.opportunities} />
 
-            {/* Confirmed value changes alert */}
-            <PriceChangeAlert changes={priceChanges} />
+            {/* Confirmed value changes alert — advisory stream only */}
+            <PriceChangeAlert changes={priceChanges.filter(c => c.stream === 'advisory')} />
           </>
         )}
       </main>
