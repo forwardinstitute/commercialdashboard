@@ -46,18 +46,17 @@ async function query<T>(soql: string): Promise<T[]> {
   // batch size shrinks when a query contains a parent-to-child sub-query, so we
   // must page through rather than trust the first response to be complete.
   const records: T[] = [];
-  let url: string | null =
-    `${SF_INSTANCE_URL}/services/data/v59.0/query?q=${encodeURIComponent(soql)}`;
+  let path: string = `/services/data/v59.0/query?q=${encodeURIComponent(soql)}`;
 
-  while (url) {
-    const response = await fetch(url, { headers });
+  while (path) {
+    const response: Response = await fetch(`${SF_INSTANCE_URL}${path}`, { headers });
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Salesforce query failed: ${error}`);
     }
-    const data = await response.json();
-    records.push(...(data.records as T[]));
-    url = data.done ? null : `${SF_INSTANCE_URL}${data.nextRecordsUrl}`;
+    const data: { records: T[]; done: boolean; nextRecordsUrl?: string } = await response.json();
+    records.push(...data.records);
+    path = data.done ? '' : (data.nextRecordsUrl ?? '');
   }
 
   return records;
