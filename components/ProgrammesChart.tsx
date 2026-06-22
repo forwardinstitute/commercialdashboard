@@ -6,6 +6,8 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
+import ProgrammesPlacesView from './ProgrammesPlacesView';
+import { productBucket } from '@/lib/places';
 
 // Pure helper — duplicated here to avoid importing a server-side module into a client component.
 // Matches any fellowship cohort year so LY opps (e.g. Fellowship Programme 2025) classify correctly.
@@ -60,6 +62,15 @@ function sectorColour(s: string) { return SECTOR_COLOURS[s] ?? '#8a7a6a'; }
 function oppSector(opp: ProgrammeOpportunity) { return opp.Organisation_Sector__c || 'Unknown'; }
 function oppOrg(opp: ProgrammeOpportunity)    { return opp.Account?.Name || 'Unknown Organisation'; }
 function oppProgramme(opp: ProgrammeOpportunity) { return opp.Programme__r?.Name || 'Unknown Programme'; }
+
+// Real place count from the opp's place line items — Total_Places__c is an
+// unreliable rollup, so we count recognised place products instead.
+function oppPlaceCount(opp: ProgrammeOpportunity): number {
+  return (opp.OpportunityLineItems?.records ?? []).reduce(
+    (s, li) => productBucket(li.Product2?.ProductCode, li.Product2?.Name) ? s + (li.Quantity ?? 0) : s,
+    0
+  );
+}
 
 const TYPE_LABELS: Record<ProgrammeType, string> = {
   all:        'All',
@@ -135,6 +146,7 @@ export default function ProgrammesChart({ data }: Props) {
   const [showCumulative, setShowCumulative] = useState(false);
   const [fyTab, setFyTab]               = useState<DrillTab>('programmes');
   const [fyBarType, setFyBarType]       = useState<BarType>('confirmed');
+  const [view, setView]                 = useState<'income' | 'places'>('income');
 
   // ── Filtered opps ──────────────────────────────────────────────────────────
 
@@ -202,7 +214,7 @@ export default function ProgrammesChart({ data }: Props) {
   const ytdMonthKeys = new Set(ytdMonths.map(m => m.monthDate.slice(0, 7)));
   const ytdPlaces = filteredOpps
     .filter(o => o.StageName === 'Confirmed' && o.CloseDate && ytdMonthKeys.has(o.CloseDate.slice(0, 7)))
-    .reduce((s, o) => s + (o.Total_Places__c ?? 0), 0);
+    .reduce((s, o) => s + (oppPlaceCount(o)), 0);
 
   // ── Chart data ─────────────────────────────────────────────────────────────
 
@@ -240,7 +252,7 @@ export default function ProgrammesChart({ data }: Props) {
     if (selection.barType === 'confirmed') {
       return active
         .filter(o => o.StageName === 'Confirmed')
-        .map(o => ({ opp: o, slice: o.Amount ?? 0, places: o.Total_Places__c ?? 0 }))
+        .map(o => ({ opp: o, slice: o.Amount ?? 0, places: oppPlaceCount(o) }))
         .sort((a, b) => b.slice - a.slice);
     }
     return active
@@ -249,7 +261,7 @@ export default function ProgrammesChart({ data }: Props) {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
         const slice  = selection.barType === 'expected' ? amount * prob : amount;
-        const places = (o.Total_Places__c ?? 0) * (selection.barType === 'expected' ? prob : 1);
+        const places = (oppPlaceCount(o)) * (selection.barType === 'expected' ? prob : 1);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)
@@ -263,7 +275,7 @@ export default function ProgrammesChart({ data }: Props) {
     if (fyBarType === 'confirmed') {
       return filteredOpps
         .filter(o => o.StageName === 'Confirmed' && o.CloseDate && fyKeys.has(o.CloseDate.slice(0, 7)))
-        .map(o => ({ opp: o, slice: o.Amount ?? 0, places: o.Total_Places__c ?? 0 }))
+        .map(o => ({ opp: o, slice: o.Amount ?? 0, places: oppPlaceCount(o) }))
         .sort((a, b) => b.slice - a.slice);
     }
     return filteredOpps
@@ -272,7 +284,7 @@ export default function ProgrammesChart({ data }: Props) {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
         const slice  = fyBarType === 'expected' ? amount * prob : amount;
-        const places = (o.Total_Places__c ?? 0) * (fyBarType === 'expected' ? prob : 1);
+        const places = (oppPlaceCount(o)) * (fyBarType === 'expected' ? prob : 1);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)
@@ -479,6 +491,21 @@ export default function ProgrammesChart({ data }: Props) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+
+      {/* ── Income / Places view toggle ─────────────────────────────────────── */}
+      <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-sm font-[Geist] w-fit">
+        {(['income', 'places'] as const).map(v => (
+          <button key={v} onClick={() => setView(v)}
+            className={`px-4 py-1.5 capitalize transition-colors ${
+              view === v ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}>
+            {v}
+          </button>
+        ))}
+      </div>
+
+      {view === 'places' && <ProgrammesPlacesView opportunities={opportunities} />}
+
+      {view === 'income' && (<>
 
       {/* ── YTD Scorecards ──────────────────────────────────────────────────── */}
       <div className="fi-card">
@@ -753,6 +780,8 @@ export default function ProgrammesChart({ data }: Props) {
           </div>
         )}
       </div>
+
+      </>)}
     </div>
   );
 }

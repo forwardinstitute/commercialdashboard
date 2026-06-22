@@ -1,4 +1,4 @@
-import { AdvisoryOpportunity, OrganisationAccount, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
+import { AdvisoryOpportunity, FellowshipHistoryOpp, FellowshipOpportunity, OrganisationAccount, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
 
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
@@ -131,7 +131,8 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
     SELECT Id, Name, Amount, StageName, Probability,
            CloseDate, Total_Places__c,
            Organisation_Sector__c, Account.Id, Account.Name,
-           Programme__r.Name
+           Programme__r.Name,
+           (SELECT Quantity, UnitPrice, ListPrice, Product2.ProductCode, Product2.Name FROM OpportunityLineItems)
     FROM Opportunity
     WHERE Programme__c != null
       AND StageName != 'Opportunity lost'
@@ -177,4 +178,42 @@ export async function getPartnerAccounts(accountIds: string[]): Promise<Organisa
     ORDER BY Name ASC
   `;
   return query<OrganisationAccount>(soql);
+}
+
+// ─── Fellowship ────────────────────────────────────────────────────────────────
+
+// All opportunities for the current Fellowship cohort (e.g. "Fellowship Programme 2026").
+// We pull the place line items so the sector/free split comes off the product code,
+// and Account.Owner.Name which Forward Institute uses as the "Partner Lead".
+// Lost opps are excluded; every other stage (Hopeful/Possible/Expecting/Confirmed) is kept.
+export async function getFellowshipOpportunities(cohortYear: number): Promise<FellowshipOpportunity[]> {
+  const soql = `
+    SELECT Id, Name, Amount, StageName, Probability, CloseDate,
+           Total_Places__c, Organisation_Sector__c,
+           Account.Id, Account.Name, Account.Owner.Name,
+           Programme__r.Name,
+           (SELECT Quantity, Product2.ProductCode, Product2.Name FROM OpportunityLineItems)
+    FROM Opportunity
+    WHERE Programme__r.Name LIKE 'Fellowship Programme ${cohortYear}%'
+      AND StageName != 'Opportunity lost'
+    ORDER BY CloseDate ASC
+  `;
+  return query<FellowshipOpportunity>(soql);
+}
+
+// Confirmed Fellowship opps from prior cohorts — drives the derived "relationship
+// with fellowship" classification and the year-on-year confirmed comparison.
+// `years` are the prior cohort years to include, e.g. [2023, 2024, 2025].
+export async function getFellowshipHistory(years: number[]): Promise<FellowshipHistoryOpp[]> {
+  if (years.length === 0) return [];
+  const nameList = years.map(y => `'Fellowship Programme ${y}'`).join(',');
+  const soql = `
+    SELECT Account.Id, Programme__r.Name, Amount, CloseDate, StageName
+    FROM Opportunity
+    WHERE Programme__r.Name IN (${nameList})
+      AND StageName = 'Confirmed'
+      AND Amount != null
+    ORDER BY CloseDate ASC
+  `;
+  return query<FellowshipHistoryOpp>(soql);
 }

@@ -49,6 +49,15 @@ export interface AdvisoryOpportunity {
 
 export type ProgrammeType = 'all' | 'fellowship' | 'exchange' | 'ltd' | 'other';
 
+// Place line item on a programme opp — UnitPrice is the achieved price/place,
+// ListPrice the price-book list price/place (drives the list-vs-actual metric).
+export interface ProgrammeLineItem {
+  Quantity: number | null;
+  UnitPrice?: number | null;
+  ListPrice?: number | null;
+  Product2?: { ProductCode: string | null; Name?: string | null };
+}
+
 export interface ProgrammeOpportunity {
   Id: string;
   Name: string;
@@ -60,6 +69,7 @@ export interface ProgrammeOpportunity {
   Organisation_Sector__c: string | null;
   Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
+  OpportunityLineItems?: { records: ProgrammeLineItem[] } | null;
 }
 
 export interface ProgrammesData {
@@ -155,6 +165,56 @@ export interface SectorSummary {
 export interface OrganisationsData {
   organisations: OrganisationSummary[];
   sectors: SectorSummary[];
+  lastUpdated: string;
+}
+
+// ─── Fellowship ─────────────────────────────────────────────────────────────
+
+// Place products on a Fellowship opportunity. The sector split (and the "free"
+// bursary count) is read off the product code on each line item, NOT the
+// account's Organisation_Sector__c field.
+//   FIFPPRIV → Private · FIFPPUB → Public · FIFPSOC → Social · FIFPFREE → Free
+export interface FellowshipLineItem {
+  Quantity: number | null;
+  Product2?: { ProductCode: string | null; Name?: string | null };
+}
+
+export interface FellowshipOpportunity {
+  Id: string;
+  Name: string;
+  Amount: number | null;
+  StageName: string;            // Hopeful | Possible | Expecting | Confirmed (lost excluded)
+  Probability: number | null;
+  CloseDate: string | null;
+  Total_Places__c: number | null;
+  Organisation_Sector__c: string | null;
+  Account?: { Id: string; Name: string; Owner?: { Name: string | null } }; // Owner = Partner Lead
+  Programme__r?: { Name: string };
+  OpportunityLineItems?: { records: FellowshipLineItem[] } | null;
+}
+
+// Lean shape for prior-cohort history — drives relationship classification + YoY.
+export interface FellowshipHistoryOpp {
+  Account?: { Id: string };
+  Programme__r?: { Name: string };
+  Amount: number | null;
+  CloseDate: string | null;
+  StageName: string;
+}
+
+// Derived from confirmed opps in prior cohorts (no Salesforce field needed):
+//   sent-last-year → confirmed in the immediately-prior cohort
+//   returning      → confirmed in an earlier cohort but not last year
+//   new            → no confirmed Fellowship opp in any prior cohort
+export type FellowshipRelationship = 'sent-last-year' | 'returning' | 'new';
+
+export interface FellowshipData {
+  cohortYear: number;            // e.g. 2026
+  cohortNumber: number;          // year − 2014, e.g. 12
+  opportunities: FellowshipOpportunity[];
+  relationshipByAccount: Record<string, FellowshipRelationship>;
+  // YoY confirmed: one series per cohort year, cumulative confirmed £ by calendar month (Jan–Dec)
+  yoy: { year: number; label: string; monthly: number[] }[];
   lastUpdated: string;
 }
 
