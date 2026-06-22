@@ -74,17 +74,27 @@ const PlacesTooltip = ({ active, payload, label }: any) => {
     </div>
   );
 };
-const MoneyTooltip = ({ active, payload, label }: any) => {
+// Price-per-place tooltip — shows the breakdown: X places · total £Y · £Z per place.
+const PriceTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  const line = (label: string, colour: string, total: number, perPlace: number) => (
+    <div className="mt-1">
+      <p className="flex justify-between gap-4">
+        <span style={{ color: colour }}>{label}</span>
+        <span className="font-medium">{fmtMoneyFull(perPlace)} / place</span>
+      </p>
+      <p className="text-[#8a7a6a] text-xs">
+        {fmtPlaces(d.qty)} place{d.qty === 1 ? '' : 's'} · {fmtMoneyFull(total)} total
+      </p>
+    </div>
+  );
   return (
-    <div className="bg-white border border-[#e8ddd0] text-[#212122] rounded-xl p-3 text-sm shadow-lg min-w-[160px]">
-      <p className="font-bold mb-2" style={{ fontFamily: 'Inria Serif, serif' }}>{label}</p>
-      {payload.filter((p: any) => p.value).map((p: any) => (
-        <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-          <span style={{ color: p.color ?? p.fill }}>{p.name}</span>
-          <span className="font-medium">{fmtMoneyFull(p.value)}</span>
-        </p>
-      ))}
+    <div className="bg-white border border-[#e8ddd0] text-[#212122] rounded-xl p-3 text-sm shadow-lg min-w-[200px]">
+      <p className="font-bold" style={{ fontFamily: 'Inria Serif, serif' }}>{d.sector}</p>
+      {line('Achieved', '#195e47', d.actualTotal, d.Actual)}
+      {line('List', '#b9a08f', d.listTotal, d.List)}
     </div>
   );
 };
@@ -165,7 +175,12 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
       acc[bucket].list += (li.ListPrice ?? 0) * qty;
     }
     return PAID_SECTORS.filter(b => acc[b]?.qty).map(b => ({
-      sector: b, List: acc[b].list / acc[b].qty, Actual: acc[b].actual / acc[b].qty,
+      sector: b,
+      qty: acc[b].qty,
+      List: acc[b].list / acc[b].qty,       // list price per place
+      Actual: acc[b].actual / acc[b].qty,   // achieved price per place
+      listTotal: acc[b].list,
+      actualTotal: acc[b].actual,
     }));
   }, [opps]);
 
@@ -339,7 +354,7 @@ export default function ProgrammesPlacesView({ opportunities }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8ddd0" vertical={false} />
                 <XAxis dataKey="sector" tick={{ fontSize: 12, fill: '#8a7a6a' }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: '#8a7a6a' }} axisLine={false} tickLine={false} width={56} />
-                <Tooltip content={<MoneyTooltip />} cursor={{ fill: '#f5ebe0' }} />
+                <Tooltip content={<PriceTooltip />} cursor={{ fill: '#f5ebe0' }} />
                 <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Geist, sans-serif' }} />
                 <Bar dataKey="List" name="List price" fill="#e3c9bd" radius={[4, 4, 0, 0]} maxBarSize={40} />
                 <Bar dataKey="Actual" name="Achieved" fill="#195e47" radius={[4, 4, 0, 0]} maxBarSize={40} />
