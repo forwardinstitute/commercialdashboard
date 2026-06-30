@@ -37,9 +37,10 @@ interface WeekPoint {
 
 const MoneyTooltip = ({ active, payload, label: lbl }: any) => {
   if (!active || !payload?.length) return null;
+  const title = payload[0]?.payload?.periodLabel ?? lbl;
   return (
     <div className="bg-white border border-[#e8ddd0] text-[#212122] rounded-xl p-3 text-sm shadow-lg min-w-[180px]">
-      <p className="font-bold mb-2" style={{ fontFamily: 'Inria Serif, serif' }}>w/c {lbl}</p>
+      <p className="font-bold mb-2" style={{ fontFamily: 'Inria Serif, serif' }}>{title}</p>
       {payload.filter((p: any) => p.value != null).map((p: any) => (
         <p key={p.name} className="flex justify-between gap-4 mb-0.5">
           <span style={{ color: p.color ?? p.stroke ?? p.fill }}>{p.name}</span>
@@ -51,18 +52,17 @@ const MoneyTooltip = ({ active, payload, label: lbl }: any) => {
 };
 
 export default function FellowshipMovement({ rows }: { rows: FellowshipMovementRow[] }) {
-  const [cadence, setCadence] = useState<'weekly' | 'fortnightly'>('weekly');
+  const [cadence, setCadence] = useState<'weekly' | 'fortnightly' | 'monthly'>('weekly');
   const [mode, setMode] = useState<'total' | 'sector'>('total');
   const [showGross, setShowGross] = useState(false);
 
-  // ── Roll daily rows up to one point per ISO week (latest snapshot in the week) ──
-  const weeks = useMemo<WeekPoint[]>(() => {
+  // ── One aggregated point per snapshot date ───────────────────────────────────
+  const daily = useMemo<WeekPoint[]>(() => {
     const byDate = new Map<string, WeekPoint>();
     for (const r of rows) {
-      const wk = mondayOf(r.snapshot_date);
       let p = byDate.get(r.snapshot_date);
       if (!p) {
-        p = { weekStart: wk, date: r.snapshot_date, weighted: 0, confirmed: 0, gross: 0, bySector: {} };
+        p = { weekStart: mondayOf(r.snapshot_date), date: r.snapshot_date, weighted: 0, confirmed: 0, gross: 0, bySector: {} };
         byDate.set(r.snapshot_date, p);
       }
       p.weighted += r.weighted;
@@ -70,21 +70,33 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
       p.gross += r.gross;
       p.bySector[r.sector] = (p.bySector[r.sector] ?? 0) + r.weighted;
     }
-    // keep the latest snapshot per week
-    const perWeek = new Map<string, WeekPoint>();
-    for (const p of [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))) {
-      perWeek.set(p.weekStart, p); // later dates overwrite → latest wins
-    }
-    return [...perWeek.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   }, [rows]);
 
-  const points = useMemo(
-    () => (cadence === 'weekly' ? weeks : weeks.filter((_, i) => (weeks.length - 1 - i) % 2 === 0)),
-    [weeks, cadence]
-  );
+  // Roll up to the latest snapshot per period (daily is ascending → last write wins).
+  const weeks = useMemo(() => {
+    const m = new Map<string, WeekPoint>();
+    for (const p of daily) m.set(p.weekStart, p);
+    return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [daily]);
+  const months = useMemo(() => {
+    const m = new Map<string, WeekPoint>();
+    for (const p of daily) m.set(p.date.slice(0, 7), p); // YYYY-MM
+    return [...m.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [daily]);
+
+  const points = useMemo(() => {
+    if (cadence === 'monthly') return months;
+    if (cadence === 'fortnightly') return weeks.filter((_, i) => (weeks.length - 1 - i) % 2 === 0);
+    return weeks;
+  }, [weeks, months, cadence]);
+
+  const monthShort = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+  const monthLong  = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
   const chartData = points.map(p => ({
-    label: label(p.weekStart),
+    label: cadence === 'monthly' ? monthShort(p.date) : label(p.weekStart),
+    periodLabel: cadence === 'monthly' ? monthLong(p.date) : `w/c ${label(p.weekStart)}`,
     Weighted: Math.round(p.weighted),
     Confirmed: Math.round(p.confirmed),
     Gross: Math.round(p.gross),
@@ -160,7 +172,7 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
           <div className="flex items-center flex-wrap gap-2 text-xs font-[Geist]">
             {/* cadence */}
             <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden">
-              {(['weekly', 'fortnightly'] as const).map(c => (
+              {(['weekly', 'fortnightly', 'monthly'] as const).map(c => (
                 <button key={c} onClick={() => setCadence(c)} className={`px-3 py-1.5 capitalize ${cadence === c ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}>{c}</button>
               ))}
             </div>
@@ -208,7 +220,7 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
           </ComposedChart>
         </ResponsiveContainer>
         <p className="text-xs text-[#8a7a6a] font-[Geist] mt-2">
-          Weighted = Σ (amount × probability), Confirmed counted at 100%. One point per {cadence === 'weekly' ? 'week' : 'fortnight'}, from the daily snapshot.
+          Weighted = Σ (amount × probability), Confirmed counted at 100%. One point per {cadence === 'weekly' ? 'week' : cadence === 'fortnightly' ? 'fortnight' : 'month'}, from the daily snapshot.
         </p>
       </div>
     </div>
