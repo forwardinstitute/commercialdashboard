@@ -256,7 +256,7 @@ export default function FellowshipDashboard({ data }: Props) {
       {/* ── KPI tiles ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Kpi label="Pipeline" sub="Total — all stages" value={fmt(kpis.pipelineTotal)} accent="#ffcc12" />
-        <Kpi label="Pipeline" sub="Without Hopeful / Possible" value={fmt(kpis.pipelineExcl)} />
+        <Kpi label="Pipeline" sub="Excl. Possible (leads)" value={fmt(kpis.pipelineExcl)} />
         <Kpi label="Confirmed" sub="Total" value={fmt(kpis.confirmed)} accent="#195e47" />
         <Kpi label="Predicted" sub="Probability-weighted" value={fmt(kpis.predicted)} accent="#85d1e3" />
         <Kpi label="Fellows" sub="Potential places" value={fmtPlaces(places.totalPotential)} />
