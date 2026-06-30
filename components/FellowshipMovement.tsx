@@ -128,6 +128,11 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
     );
   }
 
+  // Today's point is the morning snapshot, so it's still provisional vs the live tab.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const isProvisional = latest.date === todayIso;
+  const asOf = new Date(latest.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
   const Stat = ({ title, value, delta }: { title: string; value: string; delta?: number }) => (
     <div className="fi-card">
       <p className="text-sm font-medium text-[#212122] font-[Geist]">{title}</p>
@@ -149,6 +154,18 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
         <Stat title="Shift vs 2 weeks ago" value={fmtDelta(delta2wk)} delta={delta2wk} />
         <Stat title="Confirmed" value={fmtFull(latest.confirmed)} />
       </div>
+
+      <p className="text-xs text-[#8a7a6a] font-[Geist] flex items-center gap-2 flex-wrap -mt-1">
+        {isProvisional && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff8e0] text-[#b8860b] font-medium">⏳ Pending</span>
+        )}
+        <span>
+          As of {asOf} (this morning’s snapshot)
+          {isProvisional
+            ? ' — today’s figure is provisional and should reconcile with the live Pipeline tab after tomorrow’s snapshot.'
+            : '.'}
+        </span>
+      </p>
 
       {monFri && (
         <div className={`fi-card flex items-center gap-3 ${monFri.delta >= 0 ? 'border-l-4 border-[#195e47]' : 'border-l-4 border-[#dd6945]'}`}>
