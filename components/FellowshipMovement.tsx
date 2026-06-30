@@ -55,6 +55,8 @@ export default function FellowshipMovement({ rows, liveWeighted }: { rows: Fello
   const [cadence, setCadence] = useState<'weekly' | 'fortnightly' | 'monthly'>('weekly');
   const [mode, setMode] = useState<'total' | 'sector'>('total');
   const [showGross, setShowGross] = useState(false);
+  const [tableTab, setTableTab] = useState<'total' | 'sector'>('total');
+  const [copied, setCopied] = useState(false);
 
   // ── One aggregated point per snapshot date ───────────────────────────────────
   const daily = useMemo<WeekPoint[]>(() => {
@@ -132,6 +134,18 @@ export default function FellowshipMovement({ rows, liveWeighted }: { rows: Fello
   const todayIso = new Date().toISOString().slice(0, 10);
   const isProvisional = latest.date === todayIso;
   const asOf = new Date(latest.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Copy the current table as TSV (raw numbers) so it pastes cleanly into Excel.
+  const copyTable = () => {
+    const headers = tableTab === 'total' ? ['Period', 'Weighted', 'Confirmed', 'Gross'] : ['Period', ...SECTORS];
+    const body = chartData.map(d =>
+      tableTab === 'total'
+        ? [d.periodLabel, d.Weighted, d.Confirmed, d.Gross]
+        : [d.periodLabel, ...SECTORS.map(s => (d as any)[s])]
+    );
+    const tsv = [headers, ...body].map(r => r.join('\t')).join('\n');
+    navigator.clipboard?.writeText(tsv).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); });
+  };
 
   const Stat = ({ title, value, delta }: { title: string; value: string; delta?: number }) => (
     <div className="fi-card">
@@ -240,6 +254,70 @@ export default function FellowshipMovement({ rows, liveWeighted }: { rows: Fello
         </ResponsiveContainer>
         <p className="text-xs text-[#8a7a6a] font-[Geist] mt-2">
           Weighted = Σ (amount × probability), Confirmed counted at 100%. One point per {cadence === 'weekly' ? 'week' : cadence === 'fortnightly' ? 'fortnight' : 'month'}, from the daily snapshot.
+        </p>
+      </div>
+
+      {/* ── Table (copy-paste friendly) ─────────────────────────────────────── */}
+      <div className="fi-card">
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-lg font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>Table</h2>
+            <div className="flex rounded-lg border border-[#e8ddd0] overflow-hidden text-sm font-[Geist]">
+              {(['total', 'sector'] as const).map(t => (
+                <button key={t} onClick={() => setTableTab(t)}
+                  className={`px-3 py-1.5 ${tableTab === t ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}>
+                  {t === 'sector' ? 'By sector' : 'Total'}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-[#8a7a6a] font-[Geist]">
+              {cadence === 'monthly' ? 'Monthly' : cadence === 'fortnightly' ? 'Fortnightly' : 'Weekly'}
+            </span>
+          </div>
+          <button onClick={copyTable}
+            className="text-xs font-[Geist] px-3 py-1.5 rounded-full border border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0] transition-colors">
+            {copied ? '✓ Copied' : 'Copy table'}
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm font-[Geist] border-collapse">
+            <thead>
+              <tr className="text-xs uppercase tracking-wider text-[#8a7a6a] border-b border-[#e8ddd0]">
+                <th className="text-left py-2 pr-4">Period</th>
+                {tableTab === 'total' ? (
+                  <>
+                    <th className="text-right py-2 px-3">Weighted</th>
+                    <th className="text-right py-2 px-3">Confirmed</th>
+                    <th className="text-right py-2 pl-3">Gross</th>
+                  </>
+                ) : (
+                  SECTORS.map(s => <th key={s} className="text-right py-2 px-3">{s}</th>)
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {chartData.map((d, i) => (
+                <tr key={i} className="border-b border-[#f0e6d8]">
+                  <td className="py-1.5 pr-4 text-[#212122] whitespace-nowrap">{d.periodLabel}</td>
+                  {tableTab === 'total' ? (
+                    <>
+                      <td className="text-right py-1.5 px-3 tabular-nums">{fmtFull(d.Weighted)}</td>
+                      <td className="text-right py-1.5 px-3 tabular-nums text-[#8a7a6a]">{fmtFull(d.Confirmed)}</td>
+                      <td className="text-right py-1.5 pl-3 tabular-nums text-[#8a7a6a]">{fmtFull(d.Gross)}</td>
+                    </>
+                  ) : (
+                    SECTORS.map(s => (
+                      <td key={s} className="text-right py-1.5 px-3 tabular-nums">{fmtFull((d as any)[s])}</td>
+                    ))
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-[#8a7a6a] font-[Geist] mt-2">
+          {tableTab === 'total' ? 'Weighted, confirmed & gross per period.' : 'Weighted pipeline by sector per period.'} “Copy table” copies clean numbers for Excel.
         </p>
       </div>
     </div>
