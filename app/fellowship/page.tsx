@@ -37,6 +37,12 @@ export default async function FellowshipPage() {
   const { data, error } = await getData();
   const movement = await getMovement(data?.opportunities.map(o => o.Id) ?? null);
 
+  // Live probability-weighted pipeline (Confirmed at 100%) — matches the Movement
+  // "Weighted" definition, so we can show how much of today is still pending vs snapshot.
+  const liveWeighted = data
+    ? data.opportunities.reduce((s, o) => s + (o.Amount ?? 0) * ((o.Probability ?? 0) / 100), 0)
+    : null;
+
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
@@ -57,7 +63,7 @@ export default async function FellowshipPage() {
           )}
         </div>
 
-        <FellowshipView dashboardData={data} error={error} movement={movement} />
+        <FellowshipView dashboardData={data} error={error} movement={movement} liveWeighted={liveWeighted} />
       </main>
     </div>
   );

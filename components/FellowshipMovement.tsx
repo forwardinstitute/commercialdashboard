@@ -51,7 +51,7 @@ const MoneyTooltip = ({ active, payload, label: lbl }: any) => {
   );
 };
 
-export default function FellowshipMovement({ rows }: { rows: FellowshipMovementRow[] }) {
+export default function FellowshipMovement({ rows, liveWeighted }: { rows: FellowshipMovementRow[]; liveWeighted?: number | null }) {
   const [cadence, setCadence] = useState<'weekly' | 'fortnightly' | 'monthly'>('weekly');
   const [mode, setMode] = useState<'total' | 'sector'>('total');
   const [showGross, setShowGross] = useState(false);
@@ -160,10 +160,12 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#fff8e0] text-[#b8860b] font-medium">⏳ Pending</span>
         )}
         <span>
-          As of {asOf} (this morning’s snapshot)
-          {isProvisional
-            ? ' — today’s figure is provisional and should reconcile with the live Pipeline tab after tomorrow’s snapshot.'
-            : '.'}
+          As of {asOf} (this morning’s snapshot).
+          {isProvisional && liveWeighted != null && (
+            <> Live now: <span className="font-medium text-[#212122]">{fmtFull(liveWeighted)}</span>
+              {' '}(<span className={liveWeighted - latest.weighted >= 0 ? 'fi-ahead' : 'fi-behind'}>{fmtDelta(liveWeighted - latest.weighted)} pending</span>).</>
+          )}
+          {isProvisional && ' Settles after tomorrow’s snapshot.'}
         </span>
       </p>
 

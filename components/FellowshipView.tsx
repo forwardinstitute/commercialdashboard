@@ -15,10 +15,12 @@ export default function FellowshipView({
   dashboardData,
   error,
   movement,
+  liveWeighted,
 }: {
   dashboardData: FellowshipData | null;
   error: string | null;
   movement: FellowshipMovementRow[];
+  liveWeighted: number | null;
 }) {
   const [view, setView] = useState<'pipeline' | 'movement'>('pipeline');
 
@@ -40,7 +42,7 @@ export default function FellowshipView({
 
       {view === 'pipeline'
         ? (dashboardData ? <FellowshipDashboard data={dashboardData} /> : <DataLoadError error={error} />)
-        : <FellowshipMovement rows={movement} />}
+        : <FellowshipMovement rows={movement} liveWeighted={liveWeighted} />}
     </div>
   );
 }
