@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 
-import FellowshipDashboard from '@/components/FellowshipDashboard';
-import DataLoadError from '@/components/DataLoadError';
+import FellowshipView from '@/components/FellowshipView';
 import { buildFellowshipData } from '@/lib/fellowship';
+import { getFellowshipMovement } from '@/lib/snapshots';
 import { FellowshipData } from '@/types';
 
 async function getData(): Promise<{ data: FellowshipData | null; error: string | null }> {
@@ -16,6 +16,14 @@ async function getData(): Promise<{ data: FellowshipData | null; error: string |
   }
 }
 
+async function getMovement() {
+  try {
+    return await getFellowshipMovement();
+  } catch {
+    return [];
+  }
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -24,7 +32,7 @@ function fmtDate(iso: string) {
 }
 
 export default async function FellowshipPage() {
-  const { data, error } = await getData();
+  const [{ data, error }, movement] = await Promise.all([getData(), getMovement()]);
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
@@ -46,11 +54,7 @@ export default async function FellowshipPage() {
           )}
         </div>
 
-        {!data ? (
-          <DataLoadError error={error} />
-        ) : (
-          <FellowshipDashboard data={data} />
-        )}
+        <FellowshipView dashboardData={data} error={error} movement={movement} />
       </main>
     </div>
   );

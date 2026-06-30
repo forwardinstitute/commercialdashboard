@@ -35,3 +35,35 @@ export async function getConfirmedPriceChanges(days = 30): Promise<PriceChange[]
 
   return (data ?? []) as PriceChange[];
 }
+
+export type FellowshipMovementRow = {
+  snapshot_date: string;
+  sector:        string;
+  weighted:      number;
+  confirmed:     number;
+  gross:         number;
+  opps:          number;
+};
+
+// Daily Fellowship weighted-pipeline history, broken out by sector — drives the
+// "Pipeline movement" view. Read via SECURITY DEFINER RPC (RLS-safe).
+export async function getFellowshipMovement(): Promise<FellowshipMovementRow[]> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase.rpc('fellowship_movement');
+
+  if (error) {
+    console.error('[snapshots] fellowship_movement error:', error.message);
+    return [];
+  }
+
+  // numeric comes back as string from PostgREST — coerce to number.
+  return (data ?? []).map((r: any) => ({
+    snapshot_date: r.snapshot_date,
+    sector:        r.sector,
+    weighted:      Number(r.weighted)  || 0,
+    confirmed:     Number(r.confirmed) || 0,
+    gross:         Number(r.gross)     || 0,
+    opps:          Number(r.opps)      || 0,
+  })) as FellowshipMovementRow[];
+}
