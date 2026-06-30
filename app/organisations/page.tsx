@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { buildOrganisationsData } from '@/lib/organisations';
 import OrganisationsSectorChart from '@/components/OrganisationsSectorChart';
 import OrganisationsTable from '@/components/OrganisationsTable';
+import DataLoadError from '@/components/DataLoadError';
 
 export default async function OrganisationsPage() {
   try {
@@ -33,10 +34,7 @@ export default async function OrganisationsPage() {
               style={{ fontFamily: 'Inria Serif, serif' }}>
             Partner Organisations
           </h1>
-          <div className="fi-card border-l-4 border-[#dd6945]">
-            <p className="font-semibold text-[#dd6945] mb-1">Unable to load organisations data</p>
-            <pre className="text-xs text-[#8a7a6a] whitespace-pre-wrap">{message}</pre>
-          </div>
+          <DataLoadError error={message} />
         </div>
       </main>
     );

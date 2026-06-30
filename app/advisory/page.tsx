@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import AdvisoryChart from '@/components/AdvisoryChart';
 import PriceChangeAlert from '@/components/PriceChangeAlert';
+import DataLoadError from '@/components/DataLoadError';
 import { buildAdvisoryData } from '@/lib/advisory';
 import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { AdvisoryData } from '@/types';
@@ -65,14 +66,7 @@ export default async function AdvisoryPage() {
         </div>
 
         {!data ? (
-          <div className="fi-card py-8">
-            <p className="text-[#dd6945] font-bold font-[Geist] mb-2">Unable to load advisory data</p>
-            {error && (
-              <pre className="text-xs text-[#8a7a6a] font-[Geist] whitespace-pre-wrap break-all bg-[#f5ebe0] rounded-lg p-4 mt-2">
-                {error}
-              </pre>
-            )}
-          </div>
+          <DataLoadError error={error} />
         ) : (
           <>
             {/* Headline scorecards */}

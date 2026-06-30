@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import ProgrammesChart from '@/components/ProgrammesChart';
 import PriceChangeAlert from '@/components/PriceChangeAlert';
+import DataLoadError from '@/components/DataLoadError';
 import { buildProgrammesData } from '@/lib/programmes';
 import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { ProgrammesData } from '@/types';
@@ -57,14 +58,7 @@ export default async function ProgrammesPage() {
         </div>
 
         {!data ? (
-          <div className="fi-card py-8">
-            <p className="text-[#dd6945] font-bold font-[Geist] mb-2">Unable to load programmes data</p>
-            {error && (
-              <pre className="text-xs text-[#8a7a6a] font-[Geist] whitespace-pre-wrap break-all bg-[#f5ebe0] rounded-lg p-4 mt-2">
-                {error}
-              </pre>
-            )}
-          </div>
+          <DataLoadError error={error} />
         ) : (
           <>
             <ProgrammesChart data={data} />

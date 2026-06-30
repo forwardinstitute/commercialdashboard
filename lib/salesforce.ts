@@ -6,12 +6,32 @@ const SF_CLIENT_SECRET = process.env.SF_CLIENT_SECRET!;
 
 let tokenCache: { token: string; expires: number } | null = null;
 
+// Retry transient failures — a brief Vercel↔Salesforce network blip throws a
+// "fetch failed" rejection, and SF occasionally returns a 5xx. Both usually clear
+// within a moment. We do NOT retry 4xx (real auth/permission errors that won't
+// self-heal). Short backoff keeps worst-case added latency under ~1s.
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 3): Promise<Response> {
+  for (let i = 0; ; i++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status >= 500 && i < attempts - 1) {
+        await new Promise(r => setTimeout(r, 300 * (i + 1)));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      if (i >= attempts - 1) throw e;
+      await new Promise(r => setTimeout(r, 300 * (i + 1)));
+    }
+  }
+}
+
 async function getAccessToken(): Promise<string> {
   if (tokenCache && tokenCache.expires > Date.now()) {
     return tokenCache.token;
   }
 
-  const response = await fetch(`${SF_INSTANCE_URL}/services/oauth2/token`, {
+  const response = await fetchWithRetry(`${SF_INSTANCE_URL}/services/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -49,7 +69,7 @@ async function query<T>(soql: string): Promise<T[]> {
   let path: string = `/services/data/v59.0/query?q=${encodeURIComponent(soql)}`;
 
   while (path) {
-    const response: Response = await fetch(`${SF_INSTANCE_URL}${path}`, { headers });
+    const response: Response = await fetchWithRetry(`${SF_INSTANCE_URL}${path}`, { headers });
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Salesforce query failed: ${error}`);
