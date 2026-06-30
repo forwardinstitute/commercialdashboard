@@ -47,10 +47,14 @@ export type FellowshipMovementRow = {
 
 // Daily Fellowship weighted-pipeline history, broken out by sector — drives the
 // "Pipeline movement" view. Read via SECURITY DEFINER RPC (RLS-safe).
-export async function getFellowshipMovement(): Promise<FellowshipMovementRow[]> {
+// Pass the current cohort's opp IDs to scope it to Cohort 12 / Fellowship
+// Programme 2026 (matching the live Pipeline view); null/empty = all fellowship.
+export async function getFellowshipMovement(oppIds?: string[] | null): Promise<FellowshipMovementRow[]> {
   const supabase = getSupabase();
 
-  const { data, error } = await supabase.rpc('fellowship_movement');
+  const { data, error } = await supabase.rpc('fellowship_movement', {
+    p_opp_ids: oppIds && oppIds.length ? oppIds : null,
+  });
 
   if (error) {
     console.error('[snapshots] fellowship_movement error:', error.message);

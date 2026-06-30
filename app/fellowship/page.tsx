@@ -16,9 +16,9 @@ async function getData(): Promise<{ data: FellowshipData | null; error: string |
   }
 }
 
-async function getMovement() {
+async function getMovement(oppIds: string[] | null) {
   try {
-    return await getFellowshipMovement();
+    return await getFellowshipMovement(oppIds);
   } catch {
     return [];
   }
@@ -32,7 +32,10 @@ function fmtDate(iso: string) {
 }
 
 export default async function FellowshipPage() {
-  const [{ data, error }, movement] = await Promise.all([getData(), getMovement()]);
+  // Fetch the live cohort first so we can scope the movement history to the same
+  // set of opps (Cohort 12 / Fellowship Programme 2026) — keeps the two tabs in sync.
+  const { data, error } = await getData();
+  const movement = await getMovement(data?.opportunities.map(o => o.Id) ?? null);
 
   return (
     <div className="min-h-screen bg-[#fcf2e3]">

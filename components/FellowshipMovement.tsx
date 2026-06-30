@@ -187,24 +187,24 @@ export default function FellowshipMovement({ rows }: { rows: FellowshipMovementR
             <Tooltip content={<MoneyTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12, fontFamily: 'Geist, sans-serif' }} />
 
-            {mode === 'total' ? (
-              <>
-                <Area yAxisId="l" type="monotone" dataKey="Weighted" name="Weighted pipeline"
-                  stroke="#195e47" strokeWidth={2.5} fill="#195e47" fillOpacity={0.12}
-                  dot={{ r: 3, fill: '#195e47', strokeWidth: 0 }} />
-                <Line yAxisId="l" type="monotone" dataKey="Confirmed" name="Confirmed"
-                  stroke="#85d1e3" strokeWidth={2} dot={false} />
-                {showGross && (
-                  <Line yAxisId="r" type="monotone" dataKey="Gross" name="Gross (open + confirmed)"
-                    stroke="#b0a090" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
-                )}
-              </>
-            ) : (
-              SECTORS.map(s => (
-                <Area key={s} yAxisId="l" type="monotone" dataKey={s} name={s} stackId="sec"
-                  stroke={SECTOR_COLOURS[s]} fill={SECTOR_COLOURS[s]} fillOpacity={0.55} strokeWidth={1.5} />
-              ))
+            {/* recharts must see Area/Line as direct children — no Fragment wrapper */}
+            {mode === 'total' && (
+              <Area yAxisId="l" type="monotone" dataKey="Weighted" name="Weighted pipeline"
+                stroke="#195e47" strokeWidth={2.5} fill="#195e47" fillOpacity={0.12}
+                dot={{ r: 3, fill: '#195e47', strokeWidth: 0 }} />
             )}
+            {mode === 'total' && (
+              <Line yAxisId="l" type="monotone" dataKey="Confirmed" name="Confirmed"
+                stroke="#85d1e3" strokeWidth={2} dot={false} />
+            )}
+            {mode === 'total' && showGross && (
+              <Line yAxisId="r" type="monotone" dataKey="Gross" name="Gross (open + confirmed)"
+                stroke="#b0a090" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+            )}
+            {mode === 'sector' && SECTORS.map(s => (
+              <Area key={s} yAxisId="l" type="monotone" dataKey={s} name={s} stackId="sec"
+                stroke={SECTOR_COLOURS[s]} fill={SECTOR_COLOURS[s]} fillOpacity={0.55} strokeWidth={1.5} />
+            ))}
           </ComposedChart>
         </ResponsiveContainer>
         <p className="text-xs text-[#8a7a6a] font-[Geist] mt-2">
