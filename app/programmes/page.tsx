@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import ProgrammesChart from '@/components/ProgrammesChart';
 import PriceChangeAlert from '@/components/PriceChangeAlert';
 import DataLoadError from '@/components/DataLoadError';
+import ProgrammesSubNav from '@/components/ProgrammesSubNav';
 import { buildProgrammesData } from '@/lib/programmes';
 import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { ProgrammesData } from '@/types';
@@ -39,6 +40,7 @@ export default async function ProgrammesPage() {
   return (
     <div className="min-h-screen bg-[#fcf2e3]">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
+        <ProgrammesSubNav />
         {/* Page title */}
         <div className="flex items-start sm:items-center justify-between gap-4">
           <div>
