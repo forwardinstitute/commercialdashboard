@@ -147,6 +147,11 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
   return query<AdvisoryOpportunity>(soql);
 }
 
+// NOTE: Order.Type is not a reliable way to identify which programme an order
+// belongs to — current-cohort Programme orders (Fellowship/Exchange) are often
+// still tagged Type = 'Advisory Practice Project' in Salesforce. We fetch every
+// order here and let buildProgrammesData() filter down to the ones actually
+// linked via Opportunity.Order__c to a programme opportunity.
 export async function getProgrammeOrders(): Promise<AdvisoryOrder[]> {
   const soql = `
     SELECT Id, Name, OpportunityId, Status, TotalAmount,
@@ -157,7 +162,6 @@ export async function getProgrammeOrders(): Promise<AdvisoryOrder[]> {
            Invoice_Amount_Remaining__c, Sector__c,
            (SELECT Id, Name, Stage__c, Invoice_Amount__c FROM Invoices__r)
     FROM Order
-    WHERE Type != 'Advisory Practice Project'
     ORDER BY CreatedDate ASC
   `;
   return query<AdvisoryOrder>(soql);
