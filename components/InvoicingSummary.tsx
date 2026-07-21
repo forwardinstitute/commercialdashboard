@@ -42,6 +42,12 @@ const STAGE_TILES = [
     labelCls: 'text-[#8a7a6a]',
   },
   {
+    key: 'Invoice Sent',
+    label: 'Invoice Sent',
+    colours: 'border-[#e8ddd0] bg-[#faf5ee]',
+    labelCls: 'text-[#8a7a6a]',
+  },
+  {
     key: 'Partially Invoiced',
     label: 'Partially Invoiced',
     colours: 'border-[#e8ddd0] bg-[#faf5ee]',
@@ -55,18 +61,23 @@ const STAGE_TILES = [
   },
 ] as const;
 
-export default function InvoicingSummary({ orders, mismatches, uninvoicedStarted }: Props) {
-  const [open, setOpen] = useState<'uninvoiced' | 'mismatches' | null>(null);
+type OpenPanel = 'uninvoiced' | 'mismatches' | typeof STAGE_TILES[number]['key'];
 
-  const toggle = (key: 'uninvoiced' | 'mismatches') =>
+export default function InvoicingSummary({ orders, mismatches, uninvoicedStarted }: Props) {
+  const [open, setOpen] = useState<OpenPanel | null>(null);
+
+  const toggle = (key: OpenPanel) =>
     setOpen(prev => prev === key ? null : key);
 
   const activeOrders = orders.filter(o => o.Status !== 'New');
 
   const stageGroups = STAGE_TILES.map(({ key, label, colours, labelCls }) => {
-    const group = activeOrders.filter(o => o.Status === key);
-    return { key, label, colours, labelCls, count: group.length, total: group.reduce((s, o) => s + (o.TotalAmount ?? 0), 0) };
+    const group = activeOrders.filter(o => o.Status === key)
+      .sort((a, b) => (b.TotalAmount ?? 0) - (a.TotalAmount ?? 0));
+    return { key, label, colours, labelCls, count: group.length, total: group.reduce((s, o) => s + (o.TotalAmount ?? 0), 0), orders: group };
   });
+
+  const uninvoicedTotal = uninvoicedStarted.reduce((s, opp) => s + (opp.Amount ?? 0), 0);
 
   const sortedUninvoiced = [...uninvoicedStarted].sort((a, b) => {
     const da = a.Start_Date_All__c ? daysAgo(a.Start_Date_All__c) : 0;
@@ -76,55 +87,78 @@ export default function InvoicingSummary({ orders, mismatches, uninvoicedStarted
 
   return (
     <div className="fi-card">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-1">
         <h2 className="text-lg font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>
           Invoicing
         </h2>
         <p className="text-xs text-[#8a7a6a] font-[Geist]">{activeOrders.length} orders · see Finance tab for detail</p>
       </div>
+      <p className="text-xs text-[#8a7a6a] font-[Geist] mb-4">
+        Stages reflect the current status of every Advisory order in Salesforce. The no-invoice flag below is
+        scoped to confirmed projects that have started within FY 2026/27 (1 Mar 2026 – 28 Feb 2027).
+      </p>
 
       {/* Stage KPI tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <button
+          onClick={() => toggle('uninvoiced')}
+          disabled={uninvoicedStarted.length === 0}
+          className={`text-left rounded-xl border px-4 py-3 transition-colors ${
+            uninvoicedStarted.length === 0
+              ? 'border-[#e8ddd0] bg-[#faf5ee] cursor-default'
+              : open === 'uninvoiced'
+                ? 'border-[#dd6945] bg-[#dd6945]'
+                : 'border-[#f0d8d0] bg-[#fdf0ec] hover:bg-[#fbe4dc]'
+          }`}
+        >
+          <p className={`text-xs font-[Geist] mb-1 flex items-center gap-1 ${
+            uninvoicedStarted.length === 0 ? 'text-[#8a7a6a]' : open === 'uninvoiced' ? 'text-white' : 'text-[#dd6945]'
+          }`}>
+            {uninvoicedStarted.length > 0 && <span>⚑</span>}
+            No Invoice Raised
+          </p>
+          <p className={`text-xl font-bold ${open === 'uninvoiced' ? 'text-white' : 'text-[#212122]'}`} style={{ fontFamily: 'Inria Serif, serif' }}>
+            {uninvoicedStarted.length}
+          </p>
+          <p className={`text-xs font-[Geist] mt-0.5 ${open === 'uninvoiced' ? 'text-white/80' : 'text-[#8a7a6a]'}`}>{fmt(uninvoicedTotal)}</p>
+        </button>
+
         {stageGroups.map(({ key, label, colours, labelCls, count, total }) => (
-          <div key={key} className={`rounded-xl border px-4 py-3 ${colours}`}>
-            <p className={`text-xs font-[Geist] mb-1 ${labelCls}`}>{label}</p>
-            <p className="text-xl font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>
+          <button
+            key={key}
+            onClick={() => toggle(key)}
+            disabled={count === 0}
+            className={`text-left rounded-xl border px-4 py-3 transition-colors ${
+              count === 0
+                ? `${colours} cursor-default`
+                : open === key
+                  ? 'border-[#212122] bg-[#212122]'
+                  : `${colours} hover:brightness-95`
+            }`}
+          >
+            <p className={`text-xs font-[Geist] mb-1 ${open === key ? 'text-white/80' : labelCls}`}>{label}</p>
+            <p className={`text-xl font-bold ${open === key ? 'text-white' : 'text-[#212122]'}`} style={{ fontFamily: 'Inria Serif, serif' }}>
               {count}
             </p>
-            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">{fmt(total)}</p>
-          </div>
+            <p className={`text-xs font-[Geist] mt-0.5 ${open === key ? 'text-white/80' : 'text-[#8a7a6a]'}`}>{fmt(total)}</p>
+          </button>
         ))}
       </div>
 
       {/* Alert pills */}
-      {(uninvoicedStarted.length > 0 || mismatches.length > 0) && (
+      {mismatches.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {uninvoicedStarted.length > 0 && (
-            <button
-              onClick={() => toggle('uninvoiced')}
-              className={`inline-flex items-center gap-1.5 text-xs font-[Geist] rounded-full px-3 py-1 border transition-colors ${
-                open === 'uninvoiced'
-                  ? 'bg-[#dd6945] text-white border-[#dd6945]'
-                  : 'text-[#dd6945] bg-[#fdf5f2] border-[#f0d8d0] hover:bg-[#f8e8e4]'
-              }`}
-            >
-              <span>⚑</span>
-              {uninvoicedStarted.length} project{uninvoicedStarted.length !== 1 ? 's' : ''} started with no invoice raised
-            </button>
-          )}
-          {mismatches.length > 0 && (
-            <button
-              onClick={() => toggle('mismatches')}
-              className={`inline-flex items-center gap-1.5 text-xs font-[Geist] rounded-full px-3 py-1 border transition-colors ${
-                open === 'mismatches'
-                  ? 'bg-[#dd6945] text-white border-[#dd6945]'
-                  : 'text-[#dd6945] bg-[#fdf5f2] border-[#f0d8d0] hover:bg-[#f8e8e4]'
-              }`}
-            >
-              <span>⚑</span>
-              {mismatches.length} amount mismatch{mismatches.length !== 1 ? 'es' : ''} between order and opportunity
-            </button>
-          )}
+          <button
+            onClick={() => toggle('mismatches')}
+            className={`inline-flex items-center gap-1.5 text-xs font-[Geist] rounded-full px-3 py-1 border transition-colors ${
+              open === 'mismatches'
+                ? 'bg-[#dd6945] text-white border-[#dd6945]'
+                : 'text-[#dd6945] bg-[#fdf5f2] border-[#f0d8d0] hover:bg-[#f8e8e4]'
+            }`}
+          >
+            <span>⚑</span>
+            {mismatches.length} amount mismatch{mismatches.length !== 1 ? 'es' : ''} between order and opportunity
+          </button>
         </div>
       )}
 
@@ -162,6 +196,29 @@ export default function InvoicingSummary({ orders, mismatches, uninvoicedStarted
           })}
         </div>
       )}
+
+      {/* Stage expansion */}
+      {stageGroups.map(({ key, orders: stageOrders }) => open === key && (
+        <div key={key} className="mt-4 rounded-xl border border-[#e8ddd0] overflow-hidden">
+          <div className="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] gap-3 px-4 py-2 bg-[#f5ebe0] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest">
+            <span>Order</span>
+            <span className="text-right">Total</span>
+            <span className="text-right">Invoiced</span>
+            <span className="text-right">Paid</span>
+          </div>
+          {stageOrders.map((o, i) => (
+            <div
+              key={o.Id}
+              className={`flex sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr] gap-2 sm:gap-3 items-start sm:items-center px-4 py-3 text-sm font-[Geist] ${i > 0 ? 'border-t border-[#e8ddd0]' : ''}`}
+            >
+              <p className="font-medium text-[#212122] text-xs sm:text-sm truncate min-w-0">{o.Name}</p>
+              <p className="text-xs text-right text-[#212122] hidden sm:block">{fmtFull(o.TotalAmount ?? 0)}</p>
+              <p className="text-xs text-right text-[#212122] hidden sm:block">{fmtFull(o.Invoiced_Amount__c ?? 0)}</p>
+              <p className="text-xs text-right text-[#212122] hidden sm:block">{fmtFull(o.Paid_Amount__c ?? 0)}</p>
+            </div>
+          ))}
+        </div>
+      ))}
 
       {/* Mismatches expansion */}
       {open === 'mismatches' && (
