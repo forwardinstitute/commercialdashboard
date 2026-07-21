@@ -226,11 +226,12 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       }];
     });
 
+  const UNINVOICED_STATUSES = new Set(['New', 'Ready to Invoice']);
   const uninvoicedStarted: typeof opps = confirmedOpps.filter(opp => {
     if (!opp.Start_Date_All__c) return false;
     if (new Date(opp.Start_Date_All__c) > today) return false;
     const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
-    return !order || (order.Status !== 'Invoice Paid' && (order.Number_of_invoices__c ?? 0) === 0);
+    return !order || UNINVOICED_STATUSES.has(order.Status);
   });
 
   return {

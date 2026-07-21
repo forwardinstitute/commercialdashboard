@@ -102,12 +102,13 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
     return opps.some(opp => opp.Order__c === o.Id);
   });
 
+  const UNINVOICED_STATUSES = new Set(['New', 'Ready to Invoice']);
   const uninvoicedStarted: ProgrammeOpportunity[] = opps.filter(opp => {
     if (opp.StageName !== 'Confirmed') return false;
     if (!opp.CloseDate) return false;
     if (new Date(opp.CloseDate + 'T12:00:00') > today) return false;
     const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
-    return !order || (order.Status !== 'Invoice Paid' && (order.Number_of_invoices__c ?? 0) === 0);
+    return !order || UNINVOICED_STATUSES.has(order.Status);
   });
 
   // ── Targets ──────────────────────────────────────────────────────────────────

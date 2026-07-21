@@ -119,7 +119,7 @@ export default function ProgrammesFinanceTab({ opportunities, orders, lastUpdate
         const hasClosed = opp.CloseDate ? new Date(opp.CloseDate + 'T12:00:00') <= today : false;
         const invoiceCount = order?.Number_of_invoices__c ?? 0;
         const orderStatus: string = order?.Status ?? 'No Order';
-        const flagged = hasClosed && (!order || (orderStatus !== 'Invoice Paid' && invoiceCount === 0));
+        const flagged = hasClosed && (!order || orderStatus === 'New' || orderStatus === 'Ready to Invoice');
         const daysOverdue = flagged && opp.CloseDate
           ? Math.floor((today.getTime() - new Date(opp.CloseDate + 'T12:00:00').getTime()) / 86400000)
           : 0;

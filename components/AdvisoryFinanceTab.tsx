@@ -139,7 +139,7 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
         const hasStarted = opp.Start_Date_All__c ? new Date(opp.Start_Date_All__c) <= today : false;
         const invoiceCount = order?.Number_of_invoices__c ?? 0;
         const orderStatus: string = order?.Status ?? 'No Order';
-        const flagged = hasStarted && (!order || (orderStatus !== 'Invoice Paid' && invoiceCount === 0));
+        const flagged = hasStarted && (!order || orderStatus === 'New' || orderStatus === 'Ready to Invoice');
         const daysOverdue = flagged && opp.Start_Date_All__c
           ? Math.floor((today.getTime() - new Date(opp.Start_Date_All__c).getTime()) / 86400000)
           : 0;
