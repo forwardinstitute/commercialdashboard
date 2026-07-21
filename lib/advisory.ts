@@ -226,11 +226,16 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       }];
     });
 
+  // An order's Status is manually maintained and takes priority — if it's already
+  // past "Ready to Invoice" (e.g. Invoice Paid), trust it even if the Invoice__c
+  // sub-query comes back empty (invoices aren't always linked back to the Order).
   const UNINVOICED_STATUSES = new Set(['New', 'Ready to Invoice']);
   const uninvoicedStarted: typeof opps = confirmedOpps.filter(opp => {
     if (!opp.Start_Date_All__c) return false;
     if (new Date(opp.Start_Date_All__c) > today) return false;
     const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
+    const invoiceCount = order?.Invoices__r?.records.length ?? 0;
+    if (invoiceCount > 0) return false;
     return !order || UNINVOICED_STATUSES.has(order.Status);
   });
 

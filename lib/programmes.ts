@@ -102,12 +102,17 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
     return opps.some(opp => opp.Order__c === o.Id);
   });
 
+  // Status is manually maintained and takes priority — if it's already past
+  // "Ready to Invoice" (e.g. Invoice Paid), trust it even if the Invoice__c
+  // sub-query comes back empty (invoices aren't always linked back to the Order).
   const UNINVOICED_STATUSES = new Set(['New', 'Ready to Invoice']);
   const uninvoicedStarted: ProgrammeOpportunity[] = opps.filter(opp => {
     if (opp.StageName !== 'Confirmed') return false;
     if (!opp.CloseDate) return false;
     if (new Date(opp.CloseDate + 'T12:00:00') > today) return false;
     const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
+    const invoiceCount = order?.Invoices__r?.records.length ?? 0;
+    if (invoiceCount > 0) return false;
     return !order || UNINVOICED_STATUSES.has(order.Status);
   });
 

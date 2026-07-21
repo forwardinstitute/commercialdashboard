@@ -117,9 +117,12 @@ export default function ProgrammesFinanceTab({ opportunities, orders, lastUpdate
       .map(opp => {
         const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
         const hasClosed = opp.CloseDate ? new Date(opp.CloseDate + 'T12:00:00') <= today : false;
-        const invoiceCount = order?.Number_of_invoices__c ?? 0;
+        const invoiceCount = order?.Invoices__r?.records.length ?? 0;
         const orderStatus: string = order?.Status ?? 'No Order';
-        const flagged = hasClosed && (!order || orderStatus === 'New' || orderStatus === 'Ready to Invoice');
+        // Status overrules a missing sub-query result — e.g. Invoice Paid should
+        // never be flagged even if the invoice record isn't linked back to the Order.
+        const flagged = hasClosed && invoiceCount === 0
+          && (!order || orderStatus === 'New' || orderStatus === 'Ready to Invoice');
         const daysOverdue = flagged && opp.CloseDate
           ? Math.floor((today.getTime() - new Date(opp.CloseDate + 'T12:00:00').getTime()) / 86400000)
           : 0;
@@ -348,7 +351,7 @@ export default function ProgrammesFinanceTab({ opportunities, orders, lastUpdate
             </div>
 
             {/* Desktop column headers */}
-            <div className="hidden sm:grid grid-cols-[2fr_1fr_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#faf5ee] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest border-t border-[#e8ddd0]">
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_9rem_6rem_5rem_5rem] gap-3 px-4 py-2 bg-[#faf5ee] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest border-t border-[#e8ddd0]">
               <span>Programme</span>
               <span>Close date</span>
               <span className="text-right">Status</span>
@@ -368,7 +371,7 @@ export default function ProgrammesFinanceTab({ opportunities, orders, lastUpdate
                   {/* Desktop row */}
                   <button
                     onClick={toggle}
-                    className={`hidden sm:grid w-full grid-cols-[2fr_1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
+                    className={`hidden sm:grid w-full grid-cols-[2fr_1fr_9rem_6rem_5rem_5rem] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -383,7 +386,7 @@ export default function ProgrammesFinanceTab({ opportunities, orders, lastUpdate
                     <p className="text-xs text-[#8a7a6a] whitespace-nowrap">
                       {fmtDate(opp.CloseDate)}
                     </p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${sc.bg} ${sc.text}`}>{orderStatus}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap justify-self-end ${sc.bg} ${sc.text}`}>{orderStatus}</span>
                     <span className="text-xs text-right text-[#212122]">
                       {order?.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}
                     </span>

@@ -93,6 +93,13 @@ export interface ProgrammesData {
 
 // ─── Advisory ─────────────────────────────────────────────────────────────────
 
+export interface Invoice {
+  Id: string;
+  Name: string;
+  Stage__c: string; // 'New' | 'Submitted' | 'Added to Xero'
+  Invoice_Amount__c: number | null;
+}
+
 export interface AdvisoryOrder {
   Id: string;
   Name: string;
@@ -109,6 +116,7 @@ export interface AdvisoryOrder {
   Paid_Amount_Per_Month__c: number | null;
   Invoice_Amount_Remaining__c: number | null;
   Sector__c: string | null;
+  Invoices__r: { records: Invoice[] } | null; // sub-queried real invoice records
 }
 
 export interface AdvisoryMismatch {

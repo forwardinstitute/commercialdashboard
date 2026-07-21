@@ -154,7 +154,8 @@ export async function getProgrammeOrders(): Promise<AdvisoryOrder[]> {
            Number_of_invoices__c,
            Invoiced_Amount__c, Monthly_Invoiced_Amount__c,
            Paid_Amount__c, Paid_Amount_Per_Month__c,
-           Invoice_Amount_Remaining__c, Sector__c
+           Invoice_Amount_Remaining__c, Sector__c,
+           (SELECT Id, Name, Stage__c, Invoice_Amount__c FROM Invoices__r)
     FROM Order
     WHERE Type != 'Advisory Practice Project'
     ORDER BY CreatedDate ASC
@@ -169,7 +170,8 @@ export async function getAdvisoryOrders(): Promise<AdvisoryOrder[]> {
            Number_of_invoices__c,
            Invoiced_Amount__c, Monthly_Invoiced_Amount__c,
            Paid_Amount__c, Paid_Amount_Per_Month__c,
-           Invoice_Amount_Remaining__c, Sector__c
+           Invoice_Amount_Remaining__c, Sector__c,
+           (SELECT Id, Name, Stage__c, Invoice_Amount__c FROM Invoices__r)
     FROM Order
     WHERE Type = 'Advisory Practice Project'
     ORDER BY CreatedDate ASC
