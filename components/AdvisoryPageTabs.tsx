@@ -106,6 +106,7 @@ export default function AdvisoryPageTabs({ data, priceChangeAlert }: Props) {
         <AdvisoryFinanceTab
           opportunities={data.opportunities}
           orders={data.orders}
+          lastUpdated={data.lastUpdated}
         />
       )}
     </div>

@@ -10,6 +10,7 @@ import { AdvisoryOpportunity, AdvisoryOrder } from '@/types';
 interface Props {
   opportunities: AdvisoryOpportunity[];
   orders: AdvisoryOrder[];
+  lastUpdated: string;
 }
 
 const STATUSES = ['Ready to Invoice', 'Invoice Sent', 'Partially Invoiced', 'Invoice Paid'] as const;
@@ -85,7 +86,22 @@ const ChartTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function AdvisoryFinanceTab({ opportunities, orders }: Props) {
+function oppCoversMonth(opp: AdvisoryOpportunity, year: number, month: number): boolean {
+  if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return false;
+  const s = new Date(opp.Start_Date_All__c);
+  const e = new Date(opp.End_DateAll__c);
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = new Date(year, month + 1, 0);
+  return s <= monthEnd && e >= monthStart;
+}
+
+function monthlySlice(opp: AdvisoryOpportunity): number {
+  if (!opp.Amount) return 0;
+  const months = opp.Number_of_Months__c && opp.Number_of_Months__c > 0 ? opp.Number_of_Months__c : 1;
+  return opp.Amount / months;
+}
+
+export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated }: Props) {
   const [sector, setSector]         = useState<SectorFilter>('All');
   const [status, setStatus]         = useState<StatusFilter>('All');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
@@ -128,15 +144,17 @@ export default function AdvisoryFinanceTab({ opportunities, orders }: Props) {
 
   const chartData = useMemo(() =>
     FY_MONTHS.map(({ year, month, label }) => {
-      let invoiced = 0, paid = 0;
-      for (const { order } of filtered) {
-        if (!order) continue;
-        if (orderCoversMonth(order, year, month)) {
+      let won = 0, invoiced = 0, paid = 0;
+      for (const { opp, order } of filtered) {
+        if (oppCoversMonth(opp, year, month)) {
+          won += monthlySlice(opp);
+        }
+        if (order && orderCoversMonth(order, year, month)) {
           invoiced += order.Monthly_Invoiced_Amount__c ?? 0;
           paid     += order.Paid_Amount_Per_Month__c   ?? 0;
         }
       }
-      return { month: label, invoiced, paid };
+      return { month: label, won, invoiced, paid };
     }),
   [filtered]);
 
@@ -175,27 +193,49 @@ export default function AdvisoryFinanceTab({ opportunities, orders }: Props) {
         ))}
       </div>
 
-      {/* Line chart — monthly invoiced vs paid for the filtered set */}
+      {/* Line chart */}
       <div className="fi-card">
-        <p className="text-xs font-[Geist] uppercase tracking-widest text-[#8a7a6a] mb-4">
-          Monthly Invoiced vs Paid — FY 2026/27
-        </p>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <div>
+            <h3 className="font-bold text-[#212122] text-base" style={{ fontFamily: 'Inria Serif, serif' }}>
+              Income, invoicing &amp; payment — FY 2026/27
+            </h3>
+            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
+              Monthly figures for the {filtered.length} project{filtered.length !== 1 ? 's' : ''} shown below
+            </p>
+          </div>
+          <p className="text-xs text-[#8a7a6a] font-[Geist] shrink-0 mt-0.5">
+            Data as of {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="#e8ddd0" strokeDasharray="3 3" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist' }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist' }} axisLine={false} tickLine={false} width={52} />
             <Tooltip content={<ChartTooltip />} />
-            <Line type="monotone" dataKey="invoiced" name="Invoiced" stroke="#dd6945" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }} />
-            <Line type="monotone" dataKey="paid"     name="Paid"     stroke="#85d1e3" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#85d1e3', strokeWidth: 0 }} />
+            <Line type="monotone" dataKey="won"      name="Won (income recognition)" stroke="#195e47" strokeWidth={2} strokeDasharray="6 3" dot={false} activeDot={{ r: 4, fill: '#195e47', strokeWidth: 0 }} />
+            <Line type="monotone" dataKey="invoiced" name="Invoiced"                 stroke="#dd6945" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }} />
+            <Line type="monotone" dataKey="paid"     name="Paid"                     stroke="#85d1e3" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: '#85d1e3', strokeWidth: 0 }} />
           </LineChart>
         </ResponsiveContainer>
-        <div className="flex gap-4 mt-3">
-          <span className="flex items-center gap-1.5 text-xs text-[#8a7a6a] font-[Geist]">
-            <span className="w-3 h-0.5 rounded-full bg-[#dd6945] inline-block" /> Invoiced
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3 pt-3 border-t border-[#e8ddd0]">
+          <span className="flex items-center gap-2 text-xs font-[Geist]">
+            <span className="w-5 shrink-0" style={{ borderTop: '2px dashed #195e47', display: 'inline-block', marginTop: 1 }} />
+            <span className="text-[#212122] font-medium">Won</span>
+            <span className="text-[#8a7a6a]">— confirmed income recognised each month (prorated across delivery)</span>
           </span>
-          <span className="flex items-center gap-1.5 text-xs text-[#8a7a6a] font-[Geist]">
-            <span className="w-3 h-0.5 rounded-full bg-[#85d1e3] inline-block" /> Paid
+          <span className="flex items-center gap-2 text-xs font-[Geist]">
+            <span className="w-5 shrink-0" style={{ borderTop: '2px solid #dd6945', display: 'inline-block', marginTop: 1 }} />
+            <span className="text-[#212122] font-medium">Invoiced</span>
+            <span className="text-[#8a7a6a]">— invoice amounts attributed to each delivery month</span>
+          </span>
+          <span className="flex items-center gap-2 text-xs font-[Geist]">
+            <span className="w-5 shrink-0" style={{ borderTop: '2px solid #85d1e3', display: 'inline-block', marginTop: 1 }} />
+            <span className="text-[#212122] font-medium">Paid</span>
+            <span className="text-[#8a7a6a]">— cash received, attributed to each delivery month</span>
           </span>
         </div>
       </div>
