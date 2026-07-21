@@ -110,6 +110,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const [showFullYear, setShowFullYear]   = useState(false);
   const [showCumulative, setShowCumulative] = useState(false);
   const [viewMode, setViewMode]           = useState<'stage' | 'sector'>('stage');
+  const [selectedSector, setSelectedSector] = useState<'Private' | 'Public' | 'Social' | null>(null);
   const [showSectorExpected, setShowSectorExpected] = useState(false);
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
   const [fyBarType, setFyBarType]   = useState<BarType>('confirmed');
@@ -297,28 +298,32 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                 <span className="w-3 h-3 rounded-sm inline-block bg-[#c4b8a8]" />
                 Other
               </span>
-              <button
-                onClick={() => setShowSectorExpected(v => !v)}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
-                  showSectorExpected
-                    ? 'border-[#b8a898] bg-[#f0ebe4] text-[#212122]'
-                    : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-sm inline-block bg-[#b8a898]" />
-                + Expected
-              </button>
-              <button
-                onClick={() => setShowPossible(v => !v)}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
-                  showPossible
-                    ? 'border-[#d4ccc4] bg-[#f5f2ef] text-[#212122]'
-                    : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
-                }`}
-              >
-                <span className="w-3 h-3 rounded-sm inline-block bg-[#d4ccc4]" />
-                + Possible
-              </button>
+              {!selectedSector && (
+                <button
+                  onClick={() => setShowSectorExpected(v => !v)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                    showSectorExpected
+                      ? 'border-[#b8a898] bg-[#f0ebe4] text-[#212122]'
+                      : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-sm inline-block bg-[#b8a898]" />
+                  + Expected
+                </button>
+              )}
+              {!selectedSector && (
+                <button
+                  onClick={() => setShowPossible(v => !v)}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+                    showPossible
+                      ? 'border-[#d4ccc4] bg-[#f5f2ef] text-[#212122]'
+                      : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+                  }`}
+                >
+                  <span className="w-3 h-3 rounded-sm inline-block bg-[#d4ccc4]" />
+                  + Possible
+                </button>
+              )}
             </>
           )}
           <span className="flex items-center gap-1.5">
@@ -337,7 +342,7 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             Last year
           </button>
           <button
-            onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); }}
+            onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); setSelectedSector(null); setShowSectorExpected(false); }}
             className={`px-2 py-1 rounded-md border transition-colors ${
               viewMode === 'sector'
                 ? 'border-[#195e47] bg-[#195e47] text-[#fcf2e3]'
@@ -368,6 +373,39 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Sector filter pills */}
+      {viewMode === 'sector' && (
+        <div className="flex items-center gap-2 mb-4 text-xs font-[Geist]">
+          <span className="text-[#8a7a6a]">Filter:</span>
+          {(['Private', 'Public', 'Social'] as const).map(sector => (
+            <button
+              key={sector}
+              onClick={() => {
+                setSelectedSector(s => s === sector ? null : sector);
+                setShowSectorExpected(false);
+                setShowPossible(false);
+              }}
+              className="px-2.5 py-1 rounded-full border transition-colors"
+              style={
+                selectedSector === sector
+                  ? { backgroundColor: sectorColour(sector), color: sector === 'Social' ? '#212122' : '#fcf2e3', borderColor: 'transparent' }
+                  : { borderColor: '#e8ddd0', color: '#8a7a6a' }
+              }
+            >
+              {sector}
+            </button>
+          ))}
+          {selectedSector && (
+            <button
+              onClick={() => setSelectedSector(null)}
+              className="text-[#8a7a6a] hover:text-[#212122] underline"
+            >
+              All sectors
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={320}>
@@ -458,47 +496,57 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
             )}
 
             {/* Sector view bars */}
-            {viewMode === 'sector' && (
-              <Bar dataKey="secPrivate" name="Private" maxBarSize={32}
-                   stackId="income" radius={[0, 0, 0, 0]}
-                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                {sectorChartData.map((entry) => (
-                  <Cell key={entry.monthDate} fill="#195e47"
-                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                ))}
-              </Bar>
-            )}
-            {viewMode === 'sector' && (
-              <Bar dataKey="secPublic" name="Public" maxBarSize={32}
-                   stackId="income" radius={[0, 0, 0, 0]}
-                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                {sectorChartData.map((entry) => (
-                  <Cell key={entry.monthDate} fill="#85d1e3"
-                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                ))}
-              </Bar>
-            )}
-            {viewMode === 'sector' && (
-              <Bar dataKey="secSocial" name="Social" maxBarSize={32}
-                   stackId="income" radius={[0, 0, 0, 0]}
-                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                {sectorChartData.map((entry) => (
-                  <Cell key={entry.monthDate} fill="#ffcc12"
-                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
-                ))}
-              </Bar>
-            )}
-            {viewMode === 'sector' && (
-              <Bar dataKey="secOther" name="Other" maxBarSize={32}
-                   stackId="income"
-                   radius={(!showSectorExpected && !showPossible) ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                   onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
-                {sectorChartData.map((entry) => (
-                  <Cell key={entry.monthDate} fill="#c4b8a8"
-                    opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
-                ))}
-              </Bar>
-            )}
+            {(() => {
+              // When a sector is selected, only that bar renders and it's the topmost
+              const topRadius: [number, number, number, number] =
+                (!showSectorExpected && !showPossible) ? [4, 4, 0, 0] : [0, 0, 0, 0];
+              const isTop = (sector: string) =>
+                selectedSector ? selectedSector === sector : sector === 'Other';
+              return (
+                <>
+                  {viewMode === 'sector' && (!selectedSector || selectedSector === 'Private') && (
+                    <Bar dataKey="secPrivate" name="Private" maxBarSize={32}
+                         stackId="income" radius={isTop('Private') ? topRadius : [0, 0, 0, 0]}
+                         onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                      {sectorChartData.map((entry) => (
+                        <Cell key={entry.monthDate} fill="#195e47"
+                          opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                      ))}
+                    </Bar>
+                  )}
+                  {viewMode === 'sector' && (!selectedSector || selectedSector === 'Public') && (
+                    <Bar dataKey="secPublic" name="Public" maxBarSize={32}
+                         stackId="income" radius={isTop('Public') ? topRadius : [0, 0, 0, 0]}
+                         onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                      {sectorChartData.map((entry) => (
+                        <Cell key={entry.monthDate} fill="#85d1e3"
+                          opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                      ))}
+                    </Bar>
+                  )}
+                  {viewMode === 'sector' && (!selectedSector || selectedSector === 'Social') && (
+                    <Bar dataKey="secSocial" name="Social" maxBarSize={32}
+                         stackId="income" radius={isTop('Social') ? topRadius : [0, 0, 0, 0]}
+                         onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                      {sectorChartData.map((entry) => (
+                        <Cell key={entry.monthDate} fill="#ffcc12"
+                          opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 0.85} />
+                      ))}
+                    </Bar>
+                  )}
+                  {viewMode === 'sector' && !selectedSector && (
+                    <Bar dataKey="secOther" name="Other" maxBarSize={32}
+                         stackId="income" radius={topRadius}
+                         onClick={makeClickHandler('confirmed')} style={{ cursor: 'pointer' }}>
+                      {sectorChartData.map((entry) => (
+                        <Cell key={entry.monthDate} fill="#c4b8a8"
+                          opacity={selection && !isSelected(entry.monthDate) ? 0.3 : 1} />
+                      ))}
+                    </Bar>
+                  )}
+                </>
+              );
+            })()}
             {viewMode === 'sector' && showSectorExpected && (
               <Bar dataKey="expectedBar" name="Expected" maxBarSize={32}
                    stackId="income"
