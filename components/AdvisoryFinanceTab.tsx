@@ -102,11 +102,12 @@ function monthlySlice(opp: AdvisoryOpportunity): number {
 }
 
 export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated }: Props) {
-  const [sector, setSector]         = useState<SectorFilter>('All');
-  const [status, setStatus]         = useState<StatusFilter>('All');
+  const [sector, setSector]           = useState<SectorFilter>('All');
+  const [status, setStatus]           = useState<StatusFilter>('All');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
-  const [sortKey, setSortKey]       = useState<SortKey>('start');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sortKey, setSortKey]         = useState<SortKey>('start');
+  const [expandedId, setExpandedId]   = useState<string | null>(null);
+  const [showCumulative, setShowCumulative] = useState(false);
 
   const today = new Date();
   const orderById = useMemo(() => new Map(orders.map(o => [o.Id, o])), [orders]);
@@ -136,11 +137,23 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
       });
   }, [rows, sector, status, flaggedOnly, sortKey]);
 
-  const totalWon      = filtered.reduce((s, r) => s + (r.order?.TotalAmount        ?? 0), 0);
-  const totalInvoiced = filtered.reduce((s, r) => s + (r.order?.Invoiced_Amount__c ?? 0), 0);
-  const totalPaid     = filtered.reduce((s, r) => s + (r.order?.Paid_Amount__c     ?? 0), 0);
-  const totalRemain   = filtered.reduce((s, r) => s + (r.order?.Invoice_Amount_Remaining__c ?? 0), 0);
-  const flagCount     = filtered.filter(r => r.flagged).length;
+  const flagCount = filtered.filter(r => r.flagged).length;
+
+  const sumOrderAmount = (items: typeof filtered) =>
+    items.reduce((s, r) => s + (r.order?.TotalAmount ?? r.opp.Amount ?? 0), 0);
+
+  const stageKpis = useMemo(() => {
+    const noInvoice        = filtered.filter(r => r.flagged);
+    const readyToInvoice   = filtered.filter(r => r.orderStatus === 'Ready to Invoice');
+    const partialInvoiced  = filtered.filter(r => r.orderStatus === 'Partially Invoiced');
+    const paid             = filtered.filter(r => r.orderStatus === 'Invoice Paid');
+    return [
+      { label: 'No invoice raised',  items: noInvoice,       danger: true  },
+      { label: 'Ready to Invoice',   items: readyToInvoice,  danger: false },
+      { label: 'Partially Invoiced', items: partialInvoiced, danger: false },
+      { label: 'Invoice Paid',       items: paid,            danger: false },
+    ];
+  }, [filtered]);
 
   const chartData = useMemo(() =>
     FY_MONTHS.map(({ year, month, label }) => {
@@ -157,6 +170,15 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
       return { month: label, won, invoiced, paid };
     }),
   [filtered]);
+
+  const displayData = useMemo(() => {
+    if (!showCumulative) return chartData;
+    return chartData.reduce<typeof chartData>((acc, pt, i) => {
+      const prev = acc[i - 1] ?? { month: '', won: 0, invoiced: 0, paid: 0 };
+      acc.push({ month: pt.month, won: prev.won + pt.won, invoiced: prev.invoiced + pt.invoiced, paid: prev.paid + pt.paid });
+      return acc;
+    }, []);
+  }, [chartData, showCumulative]);
 
   const pill = (active: boolean, onClick: () => void, label: string, danger = false) => (
     <button
@@ -177,18 +199,26 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
   return (
     <div className="space-y-5">
 
-      {/* KPI tiles */}
+      {/* Stage KPI tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total won',  value: totalWon,      sub: `${filtered.length} projects` },
-          { label: 'Invoiced',   value: totalInvoiced,  sub: totalWon > 0 ? `${Math.round((totalInvoiced / totalWon) * 100)}% of won` : '—' },
-          { label: 'Paid',       value: totalPaid,      sub: totalWon > 0 ? `${Math.round((totalPaid / totalWon) * 100)}% of won` : '—' },
-          { label: 'Remaining',  value: totalRemain,    sub: 'yet to be paid' },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-xl border border-[#e8ddd0] bg-[#faf5ee] px-4 py-3">
-            <p className="text-xs text-[#8a7a6a] font-[Geist] mb-1">{label}</p>
-            <p className="text-xl font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{fmtCompact(value)}</p>
-            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">{sub}</p>
+        {stageKpis.map(({ label, items, danger }) => (
+          <div
+            key={label}
+            className={`rounded-xl border px-4 py-3 ${
+              danger && items.length > 0
+                ? 'border-[#f0d8d0] bg-[#fdf5f2]'
+                : 'border-[#e8ddd0] bg-[#faf5ee]'
+            }`}
+          >
+            <p className={`text-xs font-[Geist] mb-1 ${danger && items.length > 0 ? 'text-[#dd6945]' : 'text-[#8a7a6a]'}`}>
+              {danger && items.length > 0 && '⚑ '}{label}
+            </p>
+            <p className="text-xl font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>
+              {items.length}
+            </p>
+            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
+              {fmtCompact(sumOrderAmount(items))}
+            </p>
           </div>
         ))}
       </div>
@@ -201,16 +231,23 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
               Income, invoicing &amp; payment — FY 2026/27
             </h3>
             <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">
-              Monthly figures for the {filtered.length} project{filtered.length !== 1 ? 's' : ''} shown below
+              {showCumulative ? 'Cumulative' : 'Monthly'} · {filtered.length} project{filtered.length !== 1 ? 's' : ''} · data as of {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
             </p>
           </div>
-          <p className="text-xs text-[#8a7a6a] font-[Geist] shrink-0 mt-0.5">
-            Data as of {new Date(lastUpdated).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
+          <button
+            onClick={() => setShowCumulative(v => !v)}
+            className={`text-xs font-[Geist] px-3 py-1.5 rounded-lg border transition-colors shrink-0 ${
+              showCumulative
+                ? 'bg-[#212122] text-[#fcf2e3] border-[#212122]'
+                : 'text-[#8a7a6a] border-[#e8ddd0] hover:border-[#212122]'
+            }`}
+          >
+            Cumulative
+          </button>
         </div>
 
         <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={chartData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
+          <LineChart data={displayData} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid vertical={false} stroke="#e8ddd0" strokeDasharray="3 3" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist' }} axisLine={false} tickLine={false} />
             <YAxis tickFormatter={fmtCompact} tick={{ fontSize: 11, fill: '#8a7a6a', fontFamily: 'Geist' }} axisLine={false} tickLine={false} width={52} />
