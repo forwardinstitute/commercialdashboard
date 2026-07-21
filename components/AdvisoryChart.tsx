@@ -387,7 +387,7 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
             Paid
           </button>
           <button
-            onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); setSelectedSector(null); setShowSectorExpected(false); }}
+            onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); setSelectedSector(null); setShowSectorExpected(false); setShowCumulative(false); }}
             className={`px-2 py-1 rounded-md border transition-colors ${
               viewMode === 'sector'
                 ? 'border-[#195e47] bg-[#195e47] text-[#fcf2e3]'
@@ -407,7 +407,7 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
             Full year
           </button>
           <button
-            onClick={() => { setShowCumulative(v => !v); setSelection(null); setShowFullYear(false); }}
+            onClick={() => { setShowCumulative(v => !v); setSelection(null); setShowFullYear(false); setViewMode('stage'); setSelectedSector(null); setShowSectorExpected(false); }}
             className={`px-2 py-1 rounded-md border transition-colors ${
               showCumulative
                 ? 'border-[#212122] bg-[#212122] text-[#fcf2e3]'
