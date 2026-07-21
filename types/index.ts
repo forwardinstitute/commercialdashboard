@@ -29,6 +29,8 @@ export interface MonthlyData {
   isCurrentMonth: boolean;
   confirmedLY?: number;  // Confirmed income in the same month last FY (optional)
   preFY?: boolean;       // Jan/Feb before FY starts — no targets, excluded from YTD
+  invoiced?: number;     // Monthly invoiced amount (from Orders, pre-prorated by SF)
+  paid?: number;         // Monthly paid amount (from Orders, pre-prorated by SF)
 }
 
 export interface AdvisoryOpportunity {
@@ -85,6 +87,31 @@ export interface ProgrammesData {
 
 // ─── Advisory ─────────────────────────────────────────────────────────────────
 
+export interface AdvisoryOrder {
+  Id: string;
+  Name: string;
+  OpportunityId: string | null;
+  Status: string; // 'New' | 'Ready to Invoice' | 'Invoice Sent' | 'Partially Invoiced' | 'Invoice Paid'
+  TotalAmount: number | null;
+  Project_Start_Date__c: string | null;
+  Project_End_Date__c: string | null;
+  Project_Length_Months__c: number | null;
+  Invoiced_Amount__c: number | null;
+  Monthly_Invoiced_Amount__c: number | null;
+  Paid_Amount__c: number | null;
+  Paid_Amount_Per_Month__c: number | null;
+  Invoice_Amount_Remaining__c: number | null;
+  Sector__c: string | null;
+}
+
+export interface AdvisoryMismatch {
+  oppId: string;
+  oppName: string;
+  orgName: string;
+  oppAmount: number;
+  orderAmount: number;
+}
+
 export interface AdvisoryData {
   ytdConfirmed: number;
   ytdTarget: number;
@@ -93,6 +120,11 @@ export interface AdvisoryData {
   variance: number;
   months: MonthlyData[];
   opportunities: AdvisoryOpportunity[];
+  orders: AdvisoryOrder[];
+  totalWon: number;
+  totalInvoiced: number;
+  totalPaid: number;
+  mismatches: AdvisoryMismatch[];
   lastUpdated: string;
 }
 

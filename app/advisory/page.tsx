@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import AdvisoryChart from '@/components/AdvisoryChart';
+import InvoicingSummary from '@/components/InvoicingSummary';
 import PriceChangeAlert from '@/components/PriceChangeAlert';
 import DataLoadError from '@/components/DataLoadError';
 import { buildAdvisoryData } from '@/lib/advisory';
@@ -110,6 +111,15 @@ export default async function AdvisoryPage() {
 
             {/* Monthly chart with drill-down */}
             <AdvisoryChart data={data.months} opportunities={data.opportunities} />
+
+            {/* Invoicing summary — won/invoiced/paid, stage breakdown, mismatches */}
+            <InvoicingSummary
+              orders={data.orders}
+              totalWon={data.totalWon}
+              totalInvoiced={data.totalInvoiced}
+              totalPaid={data.totalPaid}
+              mismatches={data.mismatches}
+            />
 
             {/* Confirmed value changes alert — advisory stream only */}
             <PriceChangeAlert changes={priceChanges.filter(c => c.stream === 'advisory')} />

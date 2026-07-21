@@ -1,5 +1,5 @@
-import { getAdvisoryOpportunities, getAdvisoryOpportunitiesLY, getProgrammeFinanceRecords } from '@/lib/salesforce';
-import { AdvisoryData, AdvisoryOpportunity, MonthlyData } from '@/types';
+import { getAdvisoryOpportunities, getAdvisoryOpportunitiesLY, getAdvisoryOrders, getProgrammeFinanceRecords } from '@/lib/salesforce';
+import { AdvisoryData, AdvisoryMismatch, AdvisoryOpportunity, AdvisoryOrder, MonthlyData } from '@/types';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -80,6 +80,18 @@ function isThisMonth(year: number, month: number, today: Date): boolean {
   return year === today.getFullYear() && month === today.getMonth();
 }
 
+// Does this order's project period cover the given calendar month?
+function orderCoversMonth(order: AdvisoryOrder, year: number, month: number): boolean {
+  const start = order.Project_Start_Date__c;
+  const end = order.Project_End_Date__c;
+  if (!start || !end) return false;
+  const orderStart = new Date(start);
+  const orderEnd   = new Date(end);
+  const monthStart = new Date(year, month, 1);
+  const monthEnd   = lastDayOf(year, month);
+  return orderStart <= monthEnd && orderEnd >= monthStart;
+}
+
 // Does this opportunity run during the given calendar month?
 function oppCoversMonth(opp: AdvisoryOpportunity, year: number, month: number): boolean {
   if (!opp.Start_Date_All__c || !opp.End_DateAll__c) return false;
@@ -112,10 +124,11 @@ function isConfirmedStage(opp: AdvisoryOpportunity): boolean {
 }
 
 export async function buildAdvisoryData(): Promise<AdvisoryData> {
-  const [opps, oppsLY, financeRecords] = await Promise.all([
+  const [opps, oppsLY, financeRecords, orders] = await Promise.all([
     getAdvisoryOpportunities(),
     getAdvisoryOpportunitiesLY(),
     getProgrammeFinanceRecords(),
+    getAdvisoryOrders(),
   ]);
 
   const today = new Date();
@@ -148,6 +161,8 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     let confirmed = 0;
     let expected  = 0;
     let potential = 0;
+    let invoiced  = 0;
+    let paid      = 0;
 
     for (const opp of opps) {
       if (!oppCoversMonth(opp, year, month)) continue;
@@ -155,12 +170,16 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       if (isConfirmedStage(opp)) {
         confirmed += slice;
       } else {
-        // Probability-weight the open pipeline:
-        // expected = slice × probability%; potential = the remaining upside
         const prob = (opp.Probability ?? 0) / 100;
         expected  += slice * prob;
         potential += slice * (1 - prob);
       }
+    }
+
+    for (const order of orders) {
+      if (!orderCoversMonth(order, year, month)) continue;
+      invoiced += order.Monthly_Invoiced_Amount__c ?? 0;
+      paid     += order.Paid_Amount_Per_Month__c   ?? 0;
     }
 
     return {
@@ -174,14 +193,35 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
       margin: 0,
       isPast,
       isCurrentMonth,
-      // Using hardcoded actuals — swap to confirmedLYByIndex[idx] when SF data is trusted
       confirmedLY: ADVISORY_LY_ACTUALS[idx] ?? 0,
+      invoiced,
+      paid,
     };
   });
 
   const ytdMonths    = months.filter(m => m.isPast);
   const ytdConfirmed = ytdMonths.reduce((s, m) => s + m.confirmed, 0);
   const ytdTarget    = ytdMonths.reduce((s, m) => s + m.target,    0);
+
+  const totalWon      = orders.reduce((s, o) => s + (o.TotalAmount        ?? 0), 0);
+  const totalInvoiced = orders.reduce((s, o) => s + (o.Invoiced_Amount__c ?? 0), 0);
+  const totalPaid     = orders.reduce((s, o) => s + (o.Paid_Amount__c     ?? 0), 0);
+
+  const orderByOppId = new Map(orders.map(o => [o.OpportunityId, o]));
+  const mismatches: AdvisoryMismatch[] = opps
+    .filter(opp => isConfirmedStage(opp) && opp.Amount)
+    .flatMap(opp => {
+      const order = orderByOppId.get(opp.Id);
+      if (!order || order.TotalAmount == null) return [];
+      if (Math.abs(order.TotalAmount - (opp.Amount ?? 0)) < 1) return [];
+      return [{
+        oppId: opp.Id,
+        oppName: opp.Name,
+        orgName: opp.Account?.Name ?? 'Unknown',
+        oppAmount: opp.Amount ?? 0,
+        orderAmount: order.TotalAmount,
+      }];
+    });
 
   return {
     ytdConfirmed,
@@ -191,6 +231,11 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     variance:  ytdConfirmed - ytdTarget,
     months,
     opportunities: opps,
+    orders,
+    totalWon,
+    totalInvoiced,
+    totalPaid,
+    mismatches,
     lastUpdated: new Date().toISOString(),
   };
 }

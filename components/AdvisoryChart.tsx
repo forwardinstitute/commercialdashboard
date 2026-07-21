@@ -106,6 +106,8 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
   const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
   const [showLY, setShowLY]               = useState(false);
+  const [showInvoiced, setShowInvoiced]   = useState(false);
+  const [showPaid, setShowPaid]           = useState(false);
   const [showPossible, setShowPossible]   = useState(false);
   const [showFullYear, setShowFullYear]   = useState(false);
   const [showCumulative, setShowCumulative] = useState(false);
@@ -340,6 +342,28 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           >
             <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px dotted #8a7a6a' }} />
             Last year
+          </button>
+          <button
+            onClick={() => setShowInvoiced(v => !v)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+              showInvoiced
+                ? 'border-[#dd6945] bg-[#fdf0ec] text-[#212122]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px solid #dd6945' }} />
+            Invoiced
+          </button>
+          <button
+            onClick={() => setShowPaid(v => !v)}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${
+              showPaid
+                ? 'border-[#85d1e3] bg-[#eef8fb] text-[#212122]'
+                : 'border-[#e8ddd0] text-[#8a7a6a] hover:bg-[#f5ebe0]'
+            }`}
+          >
+            <span className="w-5 h-0.5 inline-block" style={{ borderTop: '2px solid #85d1e3' }} />
+            Paid
           </button>
           <button
             onClick={() => { setViewMode(v => v === 'sector' ? 'stage' : 'sector'); setSelection(null); setShowFullYear(false); setSelectedSector(null); setShowSectorExpected(false); }}
@@ -580,6 +604,20 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                 type="monotone" dataKey="confirmedLY" name="Last year"
                 stroke="#8a7a6a" strokeWidth={1.5}
                 dot={false} strokeDasharray="3 3"
+              />
+            )}
+            {showInvoiced && (
+              <Line
+                type="monotone" dataKey="invoiced" name="Invoiced"
+                stroke="#dd6945" strokeWidth={2}
+                dot={false} activeDot={{ r: 4, fill: '#dd6945', strokeWidth: 0 }}
+              />
+            )}
+            {showPaid && (
+              <Line
+                type="monotone" dataKey="paid" name="Paid"
+                stroke="#85d1e3" strokeWidth={2}
+                dot={false} activeDot={{ r: 4, fill: '#85d1e3', strokeWidth: 0 }}
               />
             )}
           </ComposedChart>

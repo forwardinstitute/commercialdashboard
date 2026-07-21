@@ -1,4 +1,4 @@
-import { AdvisoryOpportunity, FellowshipHistoryOpp, FellowshipOpportunity, OrganisationAccount, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
+import { AdvisoryOpportunity, AdvisoryOrder, FellowshipHistoryOpp, FellowshipOpportunity, OrganisationAccount, ProgrammeFinanceRecord, ProgrammeOpportunity } from '@/types';
 
 const SF_INSTANCE_URL = process.env.SF_INSTANCE_URL!;
 const SF_CLIENT_ID = process.env.SF_CLIENT_ID!;
@@ -145,6 +145,20 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
     ORDER BY Start_Date_All__c ASC
   `;
   return query<AdvisoryOpportunity>(soql);
+}
+
+export async function getAdvisoryOrders(): Promise<AdvisoryOrder[]> {
+  const soql = `
+    SELECT Id, Name, OpportunityId, Status, TotalAmount,
+           Project_Start_Date__c, Project_End_Date__c, Project_Length_Months__c,
+           Invoiced_Amount__c, Monthly_Invoiced_Amount__c,
+           Paid_Amount__c, Paid_Amount_Per_Month__c,
+           Invoice_Amount_Remaining__c, Sector__c
+    FROM Order
+    WHERE Type = 'Advisory Practice Project'
+    ORDER BY CreatedDate ASC
+  `;
+  return query<AdvisoryOrder>(soql);
 }
 
 // ─── Programmes ───────────────────────────────────────────────────────────────
