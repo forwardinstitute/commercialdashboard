@@ -207,11 +207,14 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
   const totalInvoiced = orders.reduce((s, o) => s + (o.Invoiced_Amount__c ?? 0), 0);
   const totalPaid     = orders.reduce((s, o) => s + (o.Paid_Amount__c     ?? 0), 0);
 
-  const orderByOppId = new Map(orders.map(o => [o.OpportunityId, o]));
-  const mismatches: AdvisoryMismatch[] = opps
-    .filter(opp => isConfirmedStage(opp) && opp.Amount)
+  // Join via Opportunity.Order__c → Order.Id (the reliable direction)
+  const orderById = new Map(orders.map(o => [o.Id, o]));
+  const confirmedOpps = opps.filter(opp => isConfirmedStage(opp));
+
+  const mismatches: AdvisoryMismatch[] = confirmedOpps
+    .filter(opp => opp.Amount)
     .flatMap(opp => {
-      const order = orderByOppId.get(opp.Id);
+      const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
       if (!order || order.TotalAmount == null) return [];
       if (Math.abs(order.TotalAmount - (opp.Amount ?? 0)) < 1) return [];
       return [{
@@ -222,6 +225,13 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
         orderAmount: order.TotalAmount,
       }];
     });
+
+  const uninvoicedStarted: typeof opps = confirmedOpps.filter(opp => {
+    if (!opp.Start_Date_All__c) return false;
+    if (new Date(opp.Start_Date_All__c) > today) return false;
+    const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
+    return !order || (order.Number_of_invoices__c ?? 0) === 0;
+  });
 
   return {
     ytdConfirmed,
@@ -236,6 +246,7 @@ export async function buildAdvisoryData(): Promise<AdvisoryData> {
     totalInvoiced,
     totalPaid,
     mismatches,
+    uninvoicedStarted,
     lastUpdated: new Date().toISOString(),
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { AdvisoryMismatch, AdvisoryOrder } from '@/types';
+import { AdvisoryMismatch, AdvisoryOpportunity, AdvisoryOrder } from '@/types';
 
 interface Props {
   orders: AdvisoryOrder[];
@@ -8,6 +8,7 @@ interface Props {
   totalInvoiced: number;
   totalPaid: number;
   mismatches: AdvisoryMismatch[];
+  uninvoicedStarted: AdvisoryOpportunity[];
 }
 
 const STAGES = [
@@ -35,7 +36,7 @@ const fmtFull = (n: number) =>
     style: 'currency', currency: 'GBP', maximumFractionDigits: 0,
   }).format(n);
 
-export default function InvoicingSummary({ orders, totalWon, totalInvoiced, totalPaid, mismatches }: Props) {
+export default function InvoicingSummary({ orders, totalWon, totalInvoiced, totalPaid, mismatches, uninvoicedStarted }: Props) {
   const remaining = totalWon - totalPaid;
   const activeOrders = orders.filter(o => o.Status !== 'New');
 
@@ -92,6 +93,44 @@ export default function InvoicingSummary({ orders, totalWon, totalInvoiced, tota
           })}
         </div>
       </div>
+
+      {/* Uninvoiced started projects */}
+      {uninvoicedStarted.length > 0 && (
+        <div>
+          <p className="text-xs font-[Geist] uppercase tracking-widest text-[#dd6945] mb-3 flex items-center gap-2">
+            <span>⚑</span>
+            <span>Started — No Invoice Raised ({uninvoicedStarted.length})</span>
+          </p>
+          <div className="rounded-xl border border-[#f0d8d0] bg-[#fdf5f2] overflow-hidden">
+            {uninvoicedStarted.map((opp, i) => (
+              <div
+                key={opp.Id}
+                className={`flex items-center justify-between px-4 py-3 text-sm font-[Geist] gap-4 ${
+                  i > 0 ? 'border-t border-[#f0d8d0]' : ''
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-[#212122] truncate">{opp.Account?.Name ?? '—'}</p>
+                  <p className="text-xs text-[#8a7a6a] truncate">{opp.Name}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-[#8a7a6a]">
+                    Started{' '}
+                    <span className="text-[#212122] font-medium">
+                      {opp.Start_Date_All__c
+                        ? new Date(opp.Start_Date_All__c).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                        : '—'}
+                    </span>
+                  </p>
+                  <p className="text-xs text-[#dd6945] font-medium mt-0.5">
+                    {opp.Order__c ? 'No invoices raised' : 'No order linked'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Mismatch alert */}
       {mismatches.length > 0 && (

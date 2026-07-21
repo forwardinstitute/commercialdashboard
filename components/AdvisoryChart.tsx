@@ -5,11 +5,13 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { AdvisoryOpportunity, MonthlyData } from '@/types';
+import { AdvisoryOpportunity, AdvisoryOrder, MonthlyData } from '@/types';
 
 interface Props {
   data: MonthlyData[];
   opportunities: AdvisoryOpportunity[];
+  orders: AdvisoryOrder[];
+  uninvoicedStarted: AdvisoryOpportunity[];
 }
 
 type BarType = 'confirmed' | 'expected' | 'possible';
@@ -102,9 +104,9 @@ const BAR_COLOURS: Record<BarType, string> = {
   possible:  '#ffcc12',
 };
 
-export default function AdvisoryChart({ data, opportunities }: Props) {
+export default function AdvisoryChart({ data, opportunities, orders, uninvoicedStarted }: Props) {
   const [selection, setSelection]   = useState<Selection | null>(null);
-  const [drillTab, setDrillTab]     = useState<'projects' | 'sectors'>('projects');
+  const [drillTab, setDrillTab]     = useState<'projects' | 'sectors' | 'finance'>('projects');
   const [showLY, setShowLY]               = useState(false);
   const [showInvoiced, setShowInvoiced]   = useState(false);
   const [showPaid, setShowPaid]           = useState(false);
@@ -178,6 +180,25 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
           .sort((a, b) => b.slice - a.slice);
       })()
     : [];
+
+  // Order lookup and uninvoiced set (for Finance tab + red flags)
+  const orderById = useMemo(() => new Map(orders.map(o => [o.Id, o])), [orders]);
+  const uninvoicedIds = useMemo(() => new Set(uninvoicedStarted.map(o => o.Id)), [uninvoicedStarted]);
+
+  // Confirmed opps in the selected month with their order data (Finance tab)
+  const financeOpps = useMemo(() => {
+    if (!selection) return [];
+    return opportunities
+      .filter(opp => opp.StageName === 'Confirmed' && coversMonth(opp, selection.monthDate))
+      .map(opp => ({
+        opp,
+        slice: monthlySlice(opp),
+        order: opp.Order__c ? orderById.get(opp.Order__c) : undefined,
+        flagged: uninvoicedIds.has(opp.Id),
+      }))
+      .filter(({ slice }) => slice > 0)
+      .sort((a, b) => b.slice - a.slice);
+  }, [selection, opportunities, orderById, uninvoicedIds]);
 
   // Group by Organisation → Projects
   const byOrg = monthOpps.reduce<Record<string, { total: number; projects: typeof monthOpps }>>((acc, item) => {
@@ -673,6 +694,15 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                 >
                   By Sector
                 </button>
+                <button
+                  onClick={() => setDrillTab('finance')}
+                  className={`px-3 py-1.5 flex items-center gap-1.5 ${drillTab === 'finance' ? 'bg-[#212122] text-[#fcf2e3]' : 'text-[#8a7a6a] hover:bg-[#f5ebe0]'}`}
+                >
+                  Finance
+                  {financeOpps.some(f => f.flagged) && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#dd6945] shrink-0" />
+                  )}
+                </button>
               </div>
 
               <button
@@ -699,8 +729,11 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                   </div>
                   {projects.map(({ opp, slice }) => (
                     <div key={opp.Id}
-                         className="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist] gap-2">
+                         className={`flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist] gap-2 ${uninvoicedIds.has(opp.Id) ? 'bg-[#fdf5f2]' : ''}`}>
                       <div className="flex items-center gap-2 min-w-0">
+                        {uninvoicedIds.has(opp.Id) && (
+                          <span className="text-[#dd6945] text-xs shrink-0" title="Started — no invoice raised">⚑</span>
+                        )}
                         <span className="text-[#212122] truncate text-xs sm:text-sm">{opp.Name}</span>
                         {oppSector(opp) !== 'Unknown' && (
                           <span
@@ -751,6 +784,62 @@ export default function AdvisoryChart({ data, opportunities }: Props) {
                         style={{ width: `${pct}%`, backgroundColor: sectorColour(sector) }}
                       />
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Finance view */}
+          {drillTab === 'finance' && (
+            <div className="rounded-xl border border-[#e8ddd0] overflow-hidden">
+              {/* Header row */}
+              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#f5ebe0] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest">
+                <span>Project</span>
+                <span className="text-right">Order Status</span>
+                <span className="text-right">Invoices</span>
+                <span className="text-right">Invoiced</span>
+                <span className="text-right">Paid</span>
+              </div>
+              {financeOpps.length === 0 && (
+                <p className="px-4 py-3 text-sm text-[#8a7a6a] font-[Geist]">No confirmed projects this month.</p>
+              )}
+              {financeOpps.map(({ opp, order, flagged }, i) => {
+                const statusColour = (() => {
+                  switch (order?.Status) {
+                    case 'Invoice Paid':       return 'bg-[#e8f5f0] text-[#195e47]';
+                    case 'Partially Invoiced': return 'bg-[#fdf0ec] text-[#dd6945]';
+                    case 'Invoice Sent':       return 'bg-[#e8f0ff] text-[#3355cc]';
+                    case 'Ready to Invoice':   return 'bg-[#fff8e0] text-[#b8860b]';
+                    default:                   return 'bg-[#f5ebe0] text-[#8a7a6a]';
+                  }
+                })();
+                return (
+                  <div
+                    key={opp.Id}
+                    className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] ${
+                      i > 0 ? 'border-t border-[#e8ddd0]' : ''
+                    } ${flagged ? 'bg-[#fdf5f2]' : ''}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {flagged && <span className="text-[#dd6945] text-xs shrink-0">⚑</span>}
+                        <p className="font-medium text-[#212122] truncate text-xs sm:text-sm">{opp.Account?.Name ?? '—'}</p>
+                      </div>
+                      <p className="text-xs text-[#8a7a6a] truncate">{opp.Name}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusColour}`}>
+                      {order?.Status ?? 'No Order'}
+                    </span>
+                    <span className={`text-xs text-right font-medium ${flagged ? 'text-[#dd6945]' : 'text-[#212122]'}`}>
+                      {order ? (order.Number_of_invoices__c ?? 0) : '—'}
+                    </span>
+                    <span className="text-xs text-right text-[#212122]">
+                      {order?.Invoiced_Amount__c != null ? fmtFull(order.Invoiced_Amount__c) : '—'}
+                    </span>
+                    <span className="text-xs text-right text-[#212122]">
+                      {order?.Paid_Amount__c != null ? fmtFull(order.Paid_Amount__c) : '—'}
+                    </span>
                   </div>
                 );
               })}

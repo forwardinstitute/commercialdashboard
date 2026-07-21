@@ -43,6 +43,7 @@ export interface AdvisoryOpportunity {
   End_DateAll__c: string | null;
   Number_of_Months__c: number | null;
   Organisation_Sector__c: string | null;
+  Order__c: string | null; // lookup to linked Order record
   Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
 }
@@ -96,6 +97,7 @@ export interface AdvisoryOrder {
   Project_Start_Date__c: string | null;
   Project_End_Date__c: string | null;
   Project_Length_Months__c: number | null;
+  Number_of_invoices__c: number | null;
   Invoiced_Amount__c: number | null;
   Monthly_Invoiced_Amount__c: number | null;
   Paid_Amount__c: number | null;
@@ -125,6 +127,7 @@ export interface AdvisoryData {
   totalInvoiced: number;
   totalPaid: number;
   mismatches: AdvisoryMismatch[];
+  uninvoicedStarted: AdvisoryOpportunity[]; // confirmed, started, zero invoices raised
   lastUpdated: string;
 }
 

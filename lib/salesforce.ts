@@ -132,7 +132,7 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            Start_Date_All__c, End_DateAll__c, Number_of_Months__c,
-           Organisation_Sector__c, Account.Id, Account.Name,
+           Organisation_Sector__c, Order__c, Account.Id, Account.Name,
            Programme__r.Name
     FROM Opportunity
     WHERE Programme__r.Name LIKE '%Advisory Practice%'
@@ -151,6 +151,7 @@ export async function getAdvisoryOrders(): Promise<AdvisoryOrder[]> {
   const soql = `
     SELECT Id, Name, OpportunityId, Status, TotalAmount,
            Project_Start_Date__c, Project_End_Date__c, Project_Length_Months__c,
+           Number_of_invoices__c,
            Invoiced_Amount__c, Monthly_Invoiced_Amount__c,
            Paid_Amount__c, Paid_Amount_Per_Month__c,
            Invoice_Amount_Remaining__c, Sector__c

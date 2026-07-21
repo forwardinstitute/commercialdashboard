@@ -110,7 +110,12 @@ export default async function AdvisoryPage() {
             </div>
 
             {/* Monthly chart with drill-down */}
-            <AdvisoryChart data={data.months} opportunities={data.opportunities} />
+            <AdvisoryChart
+              data={data.months}
+              opportunities={data.opportunities}
+              orders={data.orders}
+              uninvoicedStarted={data.uninvoicedStarted}
+            />
 
             {/* Invoicing summary — won/invoiced/paid, stage breakdown, mismatches */}
             <InvoicingSummary
@@ -119,6 +124,7 @@ export default async function AdvisoryPage() {
               totalInvoiced={data.totalInvoiced}
               totalPaid={data.totalPaid}
               mismatches={data.mismatches}
+              uninvoicedStarted={data.uninvoicedStarted}
             />
 
             {/* Confirmed value changes alert — advisory stream only */}
