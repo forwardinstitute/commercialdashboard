@@ -34,16 +34,40 @@ function ageLabel(days: number): { text: string; cls: string } {
   return { text: `${days}d`, cls: 'text-[#b8860b]' };
 }
 
-export default function InvoicingSummary({ orders, totalWon, totalInvoiced, totalPaid, mismatches, uninvoicedStarted }: Props) {
-  const [open, setOpen] = useState<'uninvoiced' | 'mismatches' | null>(null);
+const STAGE_TILES = [
+  {
+    key: 'Ready to Invoice',
+    label: 'Ready to Invoice',
+    colours: 'border-[#e8ddd0] bg-[#faf5ee]',
+    labelCls: 'text-[#8a7a6a]',
+  },
+  {
+    key: 'Partially Invoiced',
+    label: 'Partially Invoiced',
+    colours: 'border-[#e8ddd0] bg-[#faf5ee]',
+    labelCls: 'text-[#8a7a6a]',
+  },
+  {
+    key: 'Invoice Paid',
+    label: 'Invoice Paid',
+    colours: 'border-[#c8e6dc] bg-[#edf7f3]',
+    labelCls: 'text-[#195e47]',
+  },
+] as const;
 
-  const remaining = totalWon - totalPaid;
-  const activeOrders = orders.filter(o => o.Status !== 'New');
+export default function InvoicingSummary({ orders, mismatches, uninvoicedStarted }: Props) {
+  const [open, setOpen] = useState<'uninvoiced' | 'mismatches' | null>(null);
 
   const toggle = (key: 'uninvoiced' | 'mismatches') =>
     setOpen(prev => prev === key ? null : key);
 
-  // Sort uninvoiced by days overdue descending (most urgent first)
+  const activeOrders = orders.filter(o => o.Status !== 'New');
+
+  const stageGroups = STAGE_TILES.map(({ key, label, colours, labelCls }) => {
+    const group = activeOrders.filter(o => o.Status === key);
+    return { key, label, colours, labelCls, count: group.length, total: group.reduce((s, o) => s + (o.TotalAmount ?? 0), 0) };
+  });
+
   const sortedUninvoiced = [...uninvoicedStarted].sort((a, b) => {
     const da = a.Start_Date_All__c ? daysAgo(a.Start_Date_All__c) : 0;
     const db = b.Start_Date_All__c ? daysAgo(b.Start_Date_All__c) : 0;
@@ -59,18 +83,15 @@ export default function InvoicingSummary({ orders, totalWon, totalInvoiced, tota
         <p className="text-xs text-[#8a7a6a] font-[Geist]">{activeOrders.length} orders · see Finance tab for detail</p>
       </div>
 
-      {/* KPI tiles */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Won',       value: totalWon,      sub: `${activeOrders.length} orders` },
-          { label: 'Invoiced',  value: totalInvoiced, sub: totalWon > 0 ? `${Math.round((totalInvoiced / totalWon) * 100)}% of won` : '—' },
-          { label: 'Paid',      value: totalPaid,     sub: totalWon > 0 ? `${Math.round((totalPaid / totalWon) * 100)}% of won` : '—' },
-          { label: 'Remaining', value: remaining,     sub: 'yet to be paid' },
-        ].map(({ label, value, sub }) => (
-          <div key={label} className="rounded-xl border border-[#e8ddd0] bg-[#faf5ee] px-4 py-3">
-            <p className="text-xs text-[#8a7a6a] font-[Geist] mb-1">{label}</p>
-            <p className="text-xl font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>{fmt(value)}</p>
-            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">{sub}</p>
+      {/* Stage KPI tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {stageGroups.map(({ key, label, colours, labelCls, count, total }) => (
+          <div key={key} className={`rounded-xl border px-4 py-3 ${colours}`}>
+            <p className={`text-xs font-[Geist] mb-1 ${labelCls}`}>{label}</p>
+            <p className="text-xl font-bold text-[#212122]" style={{ fontFamily: 'Inria Serif, serif' }}>
+              {count}
+            </p>
+            <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5">{fmt(total)}</p>
           </div>
         ))}
       </div>
