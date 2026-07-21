@@ -365,11 +365,10 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
             </div>
 
             {/* Desktop column headers — only on first row group */}
-            <div className="hidden sm:grid grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#faf5ee] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest border-t border-[#e8ddd0]">
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#faf5ee] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest border-t border-[#e8ddd0]">
               <span>Project</span>
               <span>Dates</span>
               <span className="text-right">Status</span>
-              <span className="text-right">Inv.</span>
               <span className="text-right">Invoiced</span>
               <span className="text-right">Paid</span>
               <span className="text-right">Remaining</span>
@@ -386,7 +385,7 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
                   {/* Desktop row */}
                   <button
                     onClick={toggle}
-                    className={`hidden sm:grid w-full grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
+                    className={`hidden sm:grid w-full grid-cols-[2fr_1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -405,9 +404,6 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
                       {fmtDate(opp.Start_Date_All__c)} → {fmtDate(opp.End_DateAll__c)}
                     </p>
                     <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${sc.bg} ${sc.text}`}>{orderStatus}</span>
-                    <span className={`text-xs text-right font-medium ${flagged ? as?.text : 'text-[#8a7a6a]'}`}>
-                      {order ? invoiceCount : '—'}
-                    </span>
                     <span className="text-xs text-right text-[#212122]">
                       {order?.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}
                     </span>

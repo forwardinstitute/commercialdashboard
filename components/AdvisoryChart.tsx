@@ -794,10 +794,9 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
           {drillTab === 'finance' && (
             <div className="rounded-xl border border-[#e8ddd0] overflow-hidden">
               {/* Header row */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#f5ebe0] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 bg-[#f5ebe0] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest">
                 <span>Project</span>
                 <span className="text-right">Order Status</span>
-                <span className="text-right">Invoices</span>
                 <span className="text-right">Invoiced</span>
                 <span className="text-right">Paid</span>
               </div>
@@ -817,7 +816,7 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
                 return (
                   <div
                     key={opp.Id}
-                    className={`grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] ${
+                    className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] ${
                       i > 0 ? 'border-t border-[#e8ddd0]' : ''
                     } ${flagged ? 'bg-[#fdf5f2]' : ''}`}
                   >
@@ -830,9 +829,6 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${statusColour}`}>
                       {order?.Status ?? 'No Order'}
-                    </span>
-                    <span className={`text-xs text-right font-medium ${flagged ? 'text-[#dd6945]' : 'text-[#212122]'}`}>
-                      {order ? (order.Number_of_invoices__c ?? 0) : '—'}
                     </span>
                     <span className="text-xs text-right text-[#212122]">
                       {order?.Invoiced_Amount__c != null ? fmtFull(order.Invoiced_Amount__c) : '—'}
@@ -924,9 +920,8 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
                     const invOrder  = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
                     const invFlagged = uninvoicedIds.has(opp.Id);
                     const invStatus  = invOrder?.Status ?? (opp.StageName === 'Confirmed' ? 'No Order' : null);
-                    const invClass = invFlagged
-                      ? 'bg-[#fdf0ec] text-[#dd6945]'
-                      : invStatus === 'Invoice Paid'       ? 'bg-[#e8f5f0] text-[#195e47]'
+                    const invClass = invStatus === 'Invoice Paid'       ? 'bg-[#e8f5f0] text-[#195e47]'
+                      : invFlagged                                      ? 'bg-[#fdf0ec] text-[#dd6945]'
                       : invStatus === 'Invoice Sent'       ? 'bg-[#e8f0ff] text-[#3355cc]'
                       : invStatus === 'Partially Invoiced' ? 'bg-[#fdf0ec] text-[#dd6945]'
                       : invStatus === 'Ready to Invoice'   ? 'bg-[#fff8e0] text-[#b8860b]'
