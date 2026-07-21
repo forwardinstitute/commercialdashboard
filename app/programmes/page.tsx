@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 
-import ProgrammesChart from '@/components/ProgrammesChart';
 import PriceChangeAlert from '@/components/PriceChangeAlert';
 import DataLoadError from '@/components/DataLoadError';
 import ProgrammesSubNav from '@/components/ProgrammesSubNav';
+import ProgrammesPageTabs from '@/components/ProgrammesPageTabs';
 import { buildProgrammesData } from '@/lib/programmes';
 import { getConfirmedPriceChanges } from '@/lib/snapshots';
 import { ProgrammesData } from '@/types';
@@ -62,10 +62,10 @@ export default async function ProgrammesPage() {
         {!data ? (
           <DataLoadError error={error} />
         ) : (
-          <>
-            <ProgrammesChart data={data} />
-            <PriceChangeAlert changes={priceChanges.filter(c => c.stream !== 'advisory')} />
-          </>
+          <ProgrammesPageTabs
+            data={data}
+            priceChangeAlert={<PriceChangeAlert changes={priceChanges.filter(c => c.stream !== 'advisory')} />}
+          />
         )}
       </main>
     </div>

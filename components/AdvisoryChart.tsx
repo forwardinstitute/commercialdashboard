@@ -920,7 +920,18 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
                     <span className="font-medium text-sm text-[#212122] font-[Geist]">{org}</span>
                     <span className="text-sm font-bold text-[#212122] font-[Geist]">{fmtFull(total)}</span>
                   </div>
-                  {projects.map(({ opp, slice }) => (
+                  {projects.map(({ opp, slice }) => {
+                    const invOrder  = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
+                    const invFlagged = uninvoicedIds.has(opp.Id);
+                    const invStatus  = invOrder?.Status ?? (opp.StageName === 'Confirmed' ? 'No Order' : null);
+                    const invClass = invFlagged
+                      ? 'bg-[#fdf0ec] text-[#dd6945]'
+                      : invStatus === 'Invoice Paid'       ? 'bg-[#e8f5f0] text-[#195e47]'
+                      : invStatus === 'Invoice Sent'       ? 'bg-[#e8f0ff] text-[#3355cc]'
+                      : invStatus === 'Partially Invoiced' ? 'bg-[#fdf0ec] text-[#dd6945]'
+                      : invStatus === 'Ready to Invoice'   ? 'bg-[#fff8e0] text-[#b8860b]'
+                      : 'bg-[#f5ebe0] text-[#8a7a6a]';
+                    return (
                     <div key={opp.Id}
                          className="flex items-center justify-between px-3 sm:px-4 py-2 border-t border-[#e8ddd0] text-sm font-[Geist] gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -945,10 +956,16 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
                         }`}>
                           {opp.StageName === 'Confirmed' ? 'Confirmed' : `${opp.Probability ?? 0}%`}
                         </span>
+                        {opp.StageName === 'Confirmed' && invStatus && (
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${invClass}`}>
+                            {invFlagged ? '⚑ ' : ''}{invStatus}
+                          </span>
+                        )}
                         <span className="font-medium text-[#212122]">{fmtFull(slice)}</span>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>

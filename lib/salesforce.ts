@@ -147,6 +147,21 @@ export async function getAdvisoryOpportunities(): Promise<AdvisoryOpportunity[]>
   return query<AdvisoryOpportunity>(soql);
 }
 
+export async function getProgrammeOrders(): Promise<AdvisoryOrder[]> {
+  const soql = `
+    SELECT Id, Name, OpportunityId, Status, TotalAmount,
+           Project_Start_Date__c, Project_End_Date__c, Project_Length_Months__c,
+           Number_of_invoices__c,
+           Invoiced_Amount__c, Monthly_Invoiced_Amount__c,
+           Paid_Amount__c, Paid_Amount_Per_Month__c,
+           Invoice_Amount_Remaining__c, Sector__c
+    FROM Order
+    WHERE Type != 'Advisory Practice Project'
+    ORDER BY CreatedDate ASC
+  `;
+  return query<AdvisoryOrder>(soql);
+}
+
 export async function getAdvisoryOrders(): Promise<AdvisoryOrder[]> {
   const soql = `
     SELECT Id, Name, OpportunityId, Status, TotalAmount,
@@ -171,7 +186,7 @@ export async function getProgrammeOpportunities(): Promise<ProgrammeOpportunity[
   const soql = `
     SELECT Id, Name, Amount, StageName, Probability,
            CloseDate, Total_Places__c,
-           Organisation_Sector__c, Account.Id, Account.Name,
+           Organisation_Sector__c, Order__c, Account.Id, Account.Name,
            Programme__r.Name,
            (SELECT Quantity, UnitPrice, ListPrice, Product2.ProductCode, Product2.Name FROM OpportunityLineItems)
     FROM Opportunity

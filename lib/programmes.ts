@@ -1,5 +1,5 @@
-import { getProgrammeOpportunities, getProgrammeOpportunitiesLY, getProgrammeFinanceRecords } from '@/lib/salesforce';
-import { MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
+import { getProgrammeOpportunities, getProgrammeOpportunitiesLY, getProgrammeFinanceRecords, getProgrammeOrders } from '@/lib/salesforce';
+import { AdvisoryOrder, MonthlyData, ProgrammeOpportunity, ProgrammesData, ProgrammeType } from '@/types';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -59,10 +59,11 @@ function closesInMonth(opp: ProgrammeOpportunity, year: number, month: number): 
 }
 
 export async function buildProgrammesData(): Promise<ProgrammesData> {
-  const [rawOpps, rawOppsLY, financeRecords] = await Promise.all([
+  const [rawOpps, rawOppsLY, financeRecords, rawOrders] = await Promise.all([
     getProgrammeOpportunities(),
     getProgrammeOpportunitiesLY(),
     getProgrammeFinanceRecords(),
+    getProgrammeOrders(),
   ]);
 
   // Exclude Advisory Practice opps — NOT LIKE is invalid SOQL so we filter here
@@ -82,6 +83,32 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
   );
 
   const today = new Date();
+
+  // Filter orders to only those linked to an opp in our filtered set
+  const oppIds = new Set(opps.map(o => o.Id));
+  const orderByOppId = new Map<string, AdvisoryOrder>();
+  const orderById    = new Map<string, AdvisoryOrder>();
+  for (const order of rawOrders) {
+    orderById.set(order.Id, order);
+  }
+  // Build OpportunityId→Order map via opp.Order__c lookup
+  for (const opp of opps) {
+    if (opp.Order__c && orderById.has(opp.Order__c)) {
+      orderByOppId.set(opp.Id, orderById.get(opp.Order__c)!);
+    }
+  }
+  const orders = rawOrders.filter(o => {
+    // Keep orders linked to any opp in our filtered set
+    return opps.some(opp => opp.Order__c === o.Id);
+  });
+
+  const uninvoicedStarted: ProgrammeOpportunity[] = opps.filter(opp => {
+    if (opp.StageName !== 'Confirmed') return false;
+    if (!opp.CloseDate) return false;
+    if (new Date(opp.CloseDate + 'T12:00:00') > today) return false;
+    const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
+    return !order || (order.Number_of_invoices__c ?? 0) === 0;
+  });
 
   // ── Targets ──────────────────────────────────────────────────────────────────
   // Finance records for non-Advisory programmes. Targets are stored per
@@ -173,6 +200,8 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
       ltd:        ltdTargets,
       other:      otherTargets,
     },
+    orders,
+    uninvoicedStarted,
     lastUpdated: new Date().toISOString(),
   };
 }

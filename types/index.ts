@@ -72,6 +72,7 @@ export interface ProgrammeOpportunity {
   CloseDate: string | null;
   Total_Places__c: number | null;
   Organisation_Sector__c: string | null;
+  Order__c: string | null;
   Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
   OpportunityLineItems?: { records: ProgrammeLineItem[] } | null;
@@ -85,6 +86,8 @@ export interface ProgrammesData {
   opportunities: ProgrammeOpportunity[];           // current FY, all types
   opportunitiesLY: ProgrammeOpportunity[];         // last FY confirmed, all types
   targetsByType: Record<ProgrammeType, Record<string, number>>; // monthDate → target
+  orders: AdvisoryOrder[];                         // orders linked to programme opps
+  uninvoicedStarted: ProgrammeOpportunity[];       // confirmed, closed, zero invoices
   lastUpdated: string;
 }
 
