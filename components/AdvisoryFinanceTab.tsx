@@ -28,6 +28,25 @@ const STATUS_COLOURS: Record<string, { bg: string; text: string }> = {
   'No Order':           { bg: 'bg-[#f5ebe0]', text: 'text-[#8a7a6a]' },
 };
 
+// Age-based urgency: how long since the project started with no invoice
+function ageStyle(days: number): { row: string; text: string; badge: string } {
+  if (days > 60) return {
+    row:   'bg-[#fce4df]',
+    text:  'text-[#b83020]',
+    badge: 'bg-[#fce4df] text-[#b83020]',
+  };
+  if (days > 30) return {
+    row:   'bg-[#fdf0ec]',
+    text:  'text-[#dd6945]',
+    badge: 'bg-[#fdf0ec] text-[#dd6945]',
+  };
+  return {
+    row:   'bg-[#fffbe6]',
+    text:  'text-[#b8860b]',
+    badge: 'bg-[#fff8e0] text-[#b8860b]',
+  };
+}
+
 const FY_MONTHS = [
   { year: 2026, month: 2, label: 'Mar' },
   { year: 2026, month: 3, label: 'Apr' },
@@ -119,9 +138,12 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
         const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
         const hasStarted = opp.Start_Date_All__c ? new Date(opp.Start_Date_All__c) <= today : false;
         const invoiceCount = order?.Number_of_invoices__c ?? 0;
-        const flagged = hasStarted && (!order || invoiceCount === 0);
         const orderStatus: string = order?.Status ?? 'No Order';
-        return { opp, order, flagged, orderStatus, invoiceCount };
+        const flagged = hasStarted && (!order || (orderStatus !== 'Invoice Paid' && invoiceCount === 0));
+        const daysOverdue = flagged && opp.Start_Date_All__c
+          ? Math.floor((today.getTime() - new Date(opp.Start_Date_All__c).getTime()) / 86400000)
+          : 0;
+        return { opp, order, flagged, orderStatus, invoiceCount, daysOverdue };
       });
   }, [opportunities, orderById]);
 
@@ -136,6 +158,24 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
         return (a.opp.Start_Date_All__c ?? '') < (b.opp.Start_Date_All__c ?? '') ? -1 : 1;
       });
   }, [rows, sector, status, flaggedOnly, sortKey]);
+
+  // Group by organisation, sorted by group total descending
+  const orgGroups = useMemo(() => {
+    const map = new Map<string, typeof filtered>();
+    for (const row of filtered) {
+      const key = row.opp.Account?.Name ?? 'Unknown Organisation';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(row);
+    }
+    return [...map.entries()]
+      .map(([org, rows]) => ({
+        org,
+        rows,
+        total: rows.reduce((s, r) => s + (r.order?.TotalAmount ?? r.opp.Amount ?? 0), 0),
+        flagCount: rows.filter(r => r.flagged).length,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filtered]);
 
   const flagCount = filtered.filter(r => r.flagged).length;
 
@@ -300,189 +340,207 @@ export default function AdvisoryFinanceTab({ opportunities, orders, lastUpdated 
         )}
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-[#e8ddd0] overflow-hidden">
-        {/* Desktop header */}
-        <div className="hidden sm:grid grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 px-4 py-2.5 bg-[#f5ebe0] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest">
-          <span>Organisation / Project</span>
-          <span>Dates</span>
-          <span className="text-right">Status</span>
-          <span className="text-right">Inv.</span>
-          <span className="text-right">Invoiced</span>
-          <span className="text-right">Paid</span>
-          <span className="text-right">Remaining</span>
-        </div>
-
-        {filtered.length === 0 && (
+      {/* Grouped table */}
+      <div className="space-y-3">
+        {orgGroups.length === 0 && (
           <p className="px-4 py-6 text-sm text-center text-[#8a7a6a] font-[Geist]">No projects match the current filters.</p>
         )}
 
-        {filtered.map(({ opp, order, flagged, orderStatus, invoiceCount }, i) => {
-          const sc = STATUS_COLOURS[orderStatus] ?? STATUS_COLOURS['No Order'];
-          const isExpanded = expandedId === opp.Id;
-          const toggle = () => setExpandedId(isExpanded ? null : opp.Id);
+        {orgGroups.map(({ org, rows: groupRows, total, flagCount: groupFlagCount }) => (
+          <div key={org} className="rounded-xl border border-[#e8ddd0] overflow-hidden">
+            {/* Org header */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f5ebe0]">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-medium text-sm text-[#212122] font-[Geist] truncate">{org}</span>
+                {groupFlagCount > 0 && (
+                  <span className="text-xs text-[#dd6945] font-[Geist] shrink-0">
+                    ⚑ {groupFlagCount}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-xs text-[#8a7a6a] font-[Geist]">{groupRows.length} project{groupRows.length !== 1 ? 's' : ''}</span>
+                <span className="text-sm font-bold text-[#212122] font-[Geist]">{fmtCompact(total)}</span>
+              </div>
+            </div>
 
-          return (
-            <div key={opp.Id} className={i > 0 ? 'border-t border-[#e8ddd0]' : ''}>
-              {/* Desktop row */}
-              <button
-                onClick={toggle}
-                className={`hidden sm:grid w-full grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${flagged ? 'bg-[#fdf5f2] hover:bg-[#faeae6]' : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {flagged && <span className="text-[#dd6945] shrink-0 text-xs">⚑</span>}
-                    <p className="font-medium text-[#212122] truncate">{opp.Account?.Name ?? '—'}</p>
-                    {opp.Project_Code__c && (
-                      <span className="text-xs font-mono text-[#8a7a6a] shrink-0">{opp.Project_Code__c}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-[#8a7a6a] truncate mt-0.5">{opp.Name}</p>
-                </div>
-                <p className="text-xs text-[#8a7a6a] whitespace-nowrap">
-                  {fmtDate(opp.Start_Date_All__c)} → {fmtDate(opp.End_DateAll__c)}
-                </p>
-                <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${sc.bg} ${sc.text}`}>{orderStatus}</span>
-                <span className={`text-xs text-right font-medium ${flagged ? 'text-[#dd6945]' : 'text-[#8a7a6a]'}`}>
-                  {order ? invoiceCount : '—'}
-                </span>
-                <span className="text-xs text-right text-[#212122]">
-                  {order?.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}
-                </span>
-                <span className="text-xs text-right text-[#212122]">
-                  {order?.Paid_Amount__c != null ? fmt(order.Paid_Amount__c) : '—'}
-                </span>
-                <span className="text-xs text-right text-[#212122]">
-                  {order?.Invoice_Amount_Remaining__c != null ? fmt(order.Invoice_Amount_Remaining__c) : '—'}
-                </span>
-              </button>
+            {/* Desktop column headers — only on first row group */}
+            <div className="hidden sm:grid grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 px-4 py-2 bg-[#faf5ee] text-xs font-[Geist] text-[#8a7a6a] uppercase tracking-widest border-t border-[#e8ddd0]">
+              <span>Project</span>
+              <span>Dates</span>
+              <span className="text-right">Status</span>
+              <span className="text-right">Inv.</span>
+              <span className="text-right">Invoiced</span>
+              <span className="text-right">Paid</span>
+              <span className="text-right">Remaining</span>
+            </div>
 
-              {/* Mobile row */}
-              <button
-                onClick={toggle}
-                className={`sm:hidden w-full px-4 py-3 text-left transition-colors hover:bg-[#f5ebe0] ${flagged ? 'bg-[#fdf5f2]' : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {flagged && <span className="text-[#dd6945] text-xs">⚑</span>}
-                      <p className="font-medium text-[#212122] text-sm truncate">{opp.Account?.Name ?? '—'}</p>
-                      {opp.Project_Code__c && (
-                        <span className="text-xs font-mono text-[#8a7a6a] shrink-0">{opp.Project_Code__c}</span>
+            {groupRows.map(({ opp, order, flagged, orderStatus, invoiceCount, daysOverdue }, i) => {
+              const sc = STATUS_COLOURS[orderStatus] ?? STATUS_COLOURS['No Order'];
+              const as = flagged ? ageStyle(daysOverdue) : null;
+              const isExpanded = expandedId === opp.Id;
+              const toggle = () => setExpandedId(isExpanded ? null : opp.Id);
+
+              return (
+                <div key={opp.Id} className="border-t border-[#e8ddd0]">
+                  {/* Desktop row */}
+                  <button
+                    onClick={toggle}
+                    className={`hidden sm:grid w-full grid-cols-[2fr_1fr_auto_auto_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm font-[Geist] text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {flagged && (
+                          <span className={`text-xs font-medium shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded ${as?.badge}`}>
+                            ⚑ {daysOverdue}d
+                          </span>
+                        )}
+                        <p className="text-[#212122] truncate text-xs sm:text-sm">{opp.Name}</p>
+                        {opp.Project_Code__c && (
+                          <span className="text-xs font-mono text-[#8a7a6a] shrink-0">{opp.Project_Code__c}</span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#8a7a6a] whitespace-nowrap">
+                      {fmtDate(opp.Start_Date_All__c)} → {fmtDate(opp.End_DateAll__c)}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${sc.bg} ${sc.text}`}>{orderStatus}</span>
+                    <span className={`text-xs text-right font-medium ${flagged ? as?.text : 'text-[#8a7a6a]'}`}>
+                      {order ? invoiceCount : '—'}
+                    </span>
+                    <span className="text-xs text-right text-[#212122]">
+                      {order?.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}
+                    </span>
+                    <span className="text-xs text-right text-[#212122]">
+                      {order?.Paid_Amount__c != null ? fmt(order.Paid_Amount__c) : '—'}
+                    </span>
+                    <span className="text-xs text-right text-[#212122]">
+                      {order?.Invoice_Amount_Remaining__c != null ? fmt(order.Invoice_Amount_Remaining__c) : '—'}
+                    </span>
+                  </button>
+
+                  {/* Mobile row */}
+                  <button
+                    onClick={toggle}
+                    className={`sm:hidden w-full px-4 py-3 text-left transition-colors hover:bg-[#f5ebe0] ${as ? as.row : ''} ${isExpanded ? 'bg-[#f5ebe0]' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {flagged && (
+                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${as?.badge}`}>
+                              ⚑ {daysOverdue}d
+                            </span>
+                          )}
+                          <p className="text-sm text-[#212122] truncate">{opp.Name}</p>
+                        </div>
+                      </div>
+                      <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${sc.bg} ${sc.text}`}>{orderStatus}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-[#8a7a6a] mt-1">
+                      <span>{fmtDate(opp.Start_Date_All__c)} → {fmtDate(opp.End_DateAll__c)}</span>
+                      {order && <><span>·</span><span>{invoiceCount} inv.</span><span>·</span><span className="text-[#212122]">{fmt(order.Invoiced_Amount__c ?? 0)} invoiced</span></>}
+                    </div>
+                  </button>
+
+                  {/* Expanded drill-down */}
+                  {isExpanded && (
+                    <div className="border-t border-[#e8ddd0] bg-[#faf5ee] px-4 sm:px-6 py-4 space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {opp.Project_Code__c && (
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Project Code</p>
+                            <p className="text-sm font-mono font-medium text-[#212122]">{opp.Project_Code__c}</p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Sector</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">{opp.Organisation_Sector__c ?? '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Duration</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">
+                            {opp.Number_of_Months__c ? `${opp.Number_of_Months__c} months` : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Start date</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">{fmtDate(opp.Start_Date_All__c)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">End date</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">{fmtDate(opp.End_DateAll__c)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Opp amount</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">{opp.Amount != null ? fmt(opp.Amount) : '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Monthly slice</p>
+                          <p className="text-sm font-medium text-[#212122] font-[Geist]">
+                            {opp.Amount && opp.Number_of_Months__c
+                              ? fmt(opp.Amount / opp.Number_of_Months__c)
+                              : '—'}
+                            {' '}<span className="text-[#8a7a6a] font-normal">/mo</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {order ? (
+                        <div className="border-t border-[#e8ddd0] pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order ref</p>
+                            <p className="text-sm font-mono font-medium text-[#212122]">{order.Name}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order status</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>{order.Status}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order amount</p>
+                            <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.TotalAmount != null ? fmt(order.TotalAmount) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Invoices raised</p>
+                            <p className={`text-sm font-medium font-[Geist] ${flagged ? as?.text : 'text-[#212122]'}`}>
+                              {invoiceCount}
+                              {flagged && <span className="ml-2 text-xs">⚑ none raised</span>}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Invoiced</p>
+                            <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Paid</p>
+                            <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Paid_Amount__c != null ? fmt(order.Paid_Amount__c) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Remaining</p>
+                            <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Invoice_Amount_Remaining__c != null ? fmt(order.Invoice_Amount_Remaining__c) : '—'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Monthly invoiced</p>
+                            <p className="text-sm font-medium text-[#212122] font-[Geist]">
+                              {order.Monthly_Invoiced_Amount__c != null ? fmt(order.Monthly_Invoiced_Amount__c) : '—'}
+                              {' '}<span className="text-[#8a7a6a] font-normal">/mo</span>
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border-t border-[#e8ddd0] pt-4">
+                          <p className="text-sm text-[#dd6945] font-[Geist]">
+                            ⚑ No order linked to this opportunity. Project has started with no order in place.
+                          </p>
+                        </div>
                       )}
-                    </div>
-                    <p className="text-xs text-[#8a7a6a] truncate">{opp.Name}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap shrink-0 ${sc.bg} ${sc.text}`}>{orderStatus}</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-[#8a7a6a] mt-1">
-                  <span>{fmtDate(opp.Start_Date_All__c)} → {fmtDate(opp.End_DateAll__c)}</span>
-                  {order && <><span>·</span><span>{invoiceCount} inv.</span><span>·</span><span className="text-[#212122]">{fmt(order.Invoiced_Amount__c ?? 0)} invoiced</span></>}
-                </div>
-              </button>
-
-              {/* Expanded drill-down */}
-              {isExpanded && (
-                <div className="border-t border-[#e8ddd0] bg-[#faf5ee] px-4 sm:px-6 py-4 space-y-4">
-                  {/* Project info */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Organisation</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">{opp.Account?.Name ?? '—'}</p>
-                    </div>
-                    {opp.Project_Code__c && (
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Project Code</p>
-                        <p className="text-sm font-mono font-medium text-[#212122]">{opp.Project_Code__c}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Sector</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">{opp.Organisation_Sector__c ?? '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Duration</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">
-                        {opp.Number_of_Months__c ? `${opp.Number_of_Months__c} months` : '—'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Start date</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">{fmtDate(opp.Start_Date_All__c)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">End date</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">{fmtDate(opp.End_DateAll__c)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Opp amount</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">{opp.Amount != null ? fmt(opp.Amount) : '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Monthly slice</p>
-                      <p className="text-sm font-medium text-[#212122] font-[Geist]">
-                        {opp.Amount && opp.Number_of_Months__c
-                          ? fmt(opp.Amount / opp.Number_of_Months__c)
-                          : '—'}
-                        {' '}<span className="text-[#8a7a6a] font-normal">/mo</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Order / invoicing info */}
-                  {order ? (
-                    <div className="border-t border-[#e8ddd0] pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order ref</p>
-                        <p className="text-sm font-mono font-medium text-[#212122]">{order.Name}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order status</p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${sc.bg} ${sc.text}`}>{order.Status}</span>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Order amount</p>
-                        <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.TotalAmount != null ? fmt(order.TotalAmount) : '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Invoices raised</p>
-                        <p className={`text-sm font-medium font-[Geist] ${flagged ? 'text-[#dd6945]' : 'text-[#212122]'}`}>
-                          {invoiceCount}
-                          {flagged && <span className="ml-2 text-xs">⚑ none raised</span>}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Invoiced</p>
-                        <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Invoiced_Amount__c != null ? fmt(order.Invoiced_Amount__c) : '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Paid</p>
-                        <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Paid_Amount__c != null ? fmt(order.Paid_Amount__c) : '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Remaining</p>
-                        <p className="text-sm font-medium text-[#212122] font-[Geist]">{order.Invoice_Amount_Remaining__c != null ? fmt(order.Invoice_Amount_Remaining__c) : '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#8a7a6a] font-[Geist] uppercase tracking-widest mb-1">Monthly invoiced</p>
-                        <p className="text-sm font-medium text-[#212122] font-[Geist]">
-                          {order.Monthly_Invoiced_Amount__c != null ? fmt(order.Monthly_Invoiced_Amount__c) : '—'}
-                          {' '}<span className="text-[#8a7a6a] font-normal">/mo</span>
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="border-t border-[#e8ddd0] pt-4">
-                      <p className="text-sm text-[#dd6945] font-[Geist]">
-                        ⚑ No order linked to this opportunity. Project has started with no order in place.
-                      </p>
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );

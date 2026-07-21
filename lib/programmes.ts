@@ -107,7 +107,7 @@ export async function buildProgrammesData(): Promise<ProgrammesData> {
     if (!opp.CloseDate) return false;
     if (new Date(opp.CloseDate + 'T12:00:00') > today) return false;
     const order = opp.Order__c ? orderById.get(opp.Order__c) : undefined;
-    return !order || (order.Number_of_invoices__c ?? 0) === 0;
+    return !order || (order.Status !== 'Invoice Paid' && (order.Number_of_invoices__c ?? 0) === 0);
   });
 
   // ── Targets ──────────────────────────────────────────────────────────────────
