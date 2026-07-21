@@ -110,7 +110,12 @@ export default function InvoicingSummary({ orders, totalWon, totalInvoiced, tota
                 }`}
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-[#212122] truncate">{opp.Account?.Name ?? '—'}</p>
+                  <p className="font-medium text-[#212122] truncate">
+                    {opp.Account?.Name ?? '—'}
+                    {opp.Project_Code__c && (
+                      <span className="ml-2 text-xs font-mono font-normal text-[#8a7a6a]">{opp.Project_Code__c}</span>
+                    )}
+                  </p>
                   <p className="text-xs text-[#8a7a6a] truncate">{opp.Name}</p>
                 </div>
                 <div className="shrink-0 text-right">

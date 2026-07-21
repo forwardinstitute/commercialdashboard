@@ -44,6 +44,8 @@ export interface AdvisoryOpportunity {
   Number_of_Months__c: number | null;
   Organisation_Sector__c: string | null;
   Order__c: string | null; // lookup to linked Order record
+  Costs__c: number | null;
+  Project_Code__c: string | null;
   Account?: { Id: string; Name: string };
   Programme__r?: { Name: string };
 }
