@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { AdvisoryOpportunity, OrganisationSummary, ProgrammeOpportunity } from '@/types';
+import { AdvisoryOpportunity, AdvisoryOrder, OrganisationSummary, ProgrammeOpportunity } from '@/types';
 
 interface Props {
   org: OrganisationSummary;
   advisoryOpps: AdvisoryOpportunity[];
   programmeOpps: ProgrammeOpportunity[];
+  advisoryOrders?: AdvisoryOrder[];
 }
 
 type Stream = 'all' | 'advisory' | 'programmes';
@@ -86,39 +87,69 @@ function TargetBar({ confirmed, target, realistic, label }: {
   );
 }
 
-function OppRow({ name, amount, stage, programme, date, prob }: {
+function OppRow({ name, amount, stage, programme, date, prob, costs, order }: {
   name: string; amount: number | null; stage: string;
   programme?: string; date?: string | null; prob?: number | null;
+  costs?: number | null; order?: AdvisoryOrder | null;
 }) {
   const isConfirmed = stage === 'Confirmed';
   const stageColour = isConfirmed ? '#195e47' : '#85d1e3';
   const stageBg     = isConfirmed ? '#e8f5f0' : '#e8f5fa';
+  const hasFinance = costs || order?.Invoiced_Amount__c || order?.Invoice_Amount_Remaining__c;
   return (
-    <div className="flex items-start justify-between py-3 border-b border-[#f0e8dc] last:border-0 gap-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-[#212122] font-[Geist] truncate">{name}</p>
-        {programme && <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5 truncate">{programme}</p>}
-        {date && <p className="text-xs text-[#b0a090] font-[Geist]">{date}</p>}
+    <div className="py-3 border-b border-[#f0e8dc] last:border-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-[#212122] font-[Geist] truncate">{name}</p>
+          {programme && <p className="text-xs text-[#8a7a6a] font-[Geist] mt-0.5 truncate">{programme}</p>}
+          {date && <p className="text-xs text-[#b0a090] font-[Geist]">{date}</p>}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {prob !== null && prob !== undefined && !isConfirmed && (
+            <span className="text-xs text-[#8a7a6a] font-[Geist]">{Math.round(prob)}%</span>
+          )}
+          <span className="px-2 py-0.5 rounded-full text-xs font-[Geist] whitespace-nowrap"
+                style={{ backgroundColor: stageBg, color: stageColour }}>
+            {stage}
+          </span>
+          <span className="text-sm font-semibold font-[Geist] text-[#212122] min-w-[80px] text-right">
+            {amount !== null ? fmtFull(amount) : '—'}
+          </span>
+        </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        {prob !== null && prob !== undefined && !isConfirmed && (
-          <span className="text-xs text-[#8a7a6a] font-[Geist]">{Math.round(prob)}%</span>
-        )}
-        <span className="px-2 py-0.5 rounded-full text-xs font-[Geist] whitespace-nowrap"
-              style={{ backgroundColor: stageBg, color: stageColour }}>
-          {stage}
-        </span>
-        <span className="text-sm font-semibold font-[Geist] text-[#212122] min-w-[80px] text-right">
-          {amount !== null ? fmtFull(amount) : '—'}
-        </span>
-      </div>
+      {hasFinance && (
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5">
+          {costs != null && (
+            <span className="text-xs text-[#8a7a6a] font-[Geist]">
+              Costs <span className="text-[#212122]">{fmtFull(costs)}</span>
+            </span>
+          )}
+          {order?.Invoiced_Amount__c != null && (
+            <span className="text-xs text-[#8a7a6a] font-[Geist]">
+              Invoiced <span className="text-[#212122]">{fmtFull(order.Invoiced_Amount__c)}</span>
+              {order.Number_of_invoices__c != null && (
+                <span className="text-[#b0a090]"> ({order.Number_of_invoices__c} inv)</span>
+              )}
+            </span>
+          )}
+          {order?.Invoice_Amount_Remaining__c != null && (
+            <span className="text-xs text-[#8a7a6a] font-[Geist]">
+              Remaining <span className="text-[#212122]">{fmtFull(order.Invoice_Amount_Remaining__c)}</span>
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function OrganisationDetail({ org, advisoryOpps, programmeOpps }: Props) {
+export default function OrganisationDetail({ org, advisoryOpps, programmeOpps, advisoryOrders = [] }: Props) {
   const [stream, setStream] = useState<Stream>('all');
   const [stageFilter, setStageFilter] = useState<StageFilter>('all');
+
+  const orderByOppId = new Map<string, AdvisoryOrder>(
+    advisoryOrders.filter(o => o.OpportunityId).map(o => [o.OpportunityId!, o])
+  );
 
   const filteredAdvisory = advisoryOpps.filter(o =>
     stageFilter === 'all' ? true :
@@ -277,6 +308,8 @@ export default function OrganisationDetail({ org, advisoryOpps, programmeOpps }:
                   ? `${opp.Start_Date_All__c.slice(0,7)} – ${opp.End_DateAll__c?.slice(0,7) ?? '?'}`
                   : undefined}
                 prob={opp.Probability}
+                costs={opp.Costs__c}
+                order={orderByOppId.get(opp.Id)}
               />
             ))}
           </div>

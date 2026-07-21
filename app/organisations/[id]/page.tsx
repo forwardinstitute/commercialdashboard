@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { buildOrganisationsData } from '@/lib/organisations';
-import { getAdvisoryOpportunities, getProgrammeOpportunities } from '@/lib/salesforce';
+import { getAdvisoryOpportunities, getAdvisoryOrders, getProgrammeOpportunities } from '@/lib/salesforce';
 import OrganisationDetail from '@/components/OrganisationDetail';
 import Link from 'next/link';
 
@@ -11,10 +11,11 @@ export default async function OrganisationDetailPage({ params }: Props) {
   const { id } = await params;
 
   try {
-    const [orgData, advisoryOpps, rawProgrammeOpps] = await Promise.all([
+    const [orgData, advisoryOpps, rawProgrammeOpps, allOrders] = await Promise.all([
       buildOrganisationsData(),
       getAdvisoryOpportunities(),
       getProgrammeOpportunities(),
+      getAdvisoryOrders(),
     ]);
 
     const org = orgData.organisations.find(o => o.accountId === id);
@@ -32,6 +33,8 @@ export default async function OrganisationDetailPage({ params }: Props) {
     }
 
     const orgAdvisoryOpps = advisoryOpps.filter(o => o.Account?.Id === id);
+    const orgOppIds = new Set(orgAdvisoryOpps.map(o => o.Id));
+    const orgOrders = allOrders.filter(o => o.OpportunityId && orgOppIds.has(o.OpportunityId));
 
     const isOldFellowship = (o: typeof rawProgrammeOpps[0]) => {
       const name = (o.Programme__r?.Name ?? '').toLowerCase();
@@ -53,6 +56,7 @@ export default async function OrganisationDetailPage({ params }: Props) {
             org={org}
             advisoryOpps={orgAdvisoryOpps}
             programmeOpps={orgProgrammeOpps}
+            advisoryOrders={orgOrders}
           />
         </div>
       </main>
