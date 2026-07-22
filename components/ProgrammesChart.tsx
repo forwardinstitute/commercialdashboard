@@ -261,7 +261,9 @@ export default function ProgrammesChart({ data }: Props) {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
         const slice  = selection.barType === 'expected' ? amount * prob : amount;
-        const places = (oppPlaceCount(o)) * (selection.barType === 'expected' ? prob : 1);
+        // Places are a real, discrete count on the opp — probability-weighting
+        // them (like the £ amount) produces fractional "0.4 places" nonsense.
+        const places = oppPlaceCount(o);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)
@@ -284,7 +286,9 @@ export default function ProgrammesChart({ data }: Props) {
         const amount = o.Amount ?? 0;
         const prob   = (o.Probability ?? 0) / 100;
         const slice  = fyBarType === 'expected' ? amount * prob : amount;
-        const places = (oppPlaceCount(o)) * (fyBarType === 'expected' ? prob : 1);
+        // Places are a real, discrete count on the opp — probability-weighting
+        // them (like the £ amount) produces fractional "0.4 places" nonsense.
+        const places = oppPlaceCount(o);
         return { opp: o, slice, places };
       })
       .filter(({ slice }) => slice > 0)
