@@ -92,6 +92,16 @@ function sectorColour(sector: string): string {
   return SECTOR_COLOURS[sector] ?? '#8a7a6a';
 }
 
+// Advisory has no per-sector £ target in Salesforce (Target_Amount__c is a
+// single blended monthly figure) — only Programme place-recruitment targets
+// are split by sector. This fixed split is a stated approximation, not a
+// figure pulled from Salesforce.
+const SECTOR_TARGET_SHARE: Record<string, number> = {
+  Private: 0.6,
+  Public:  0.3,
+  Social:  0.1,
+};
+
 const BAR_LABELS: Record<BarType, string> = {
   confirmed: 'Confirmed',
   expected:  'Expected',
@@ -154,8 +164,11 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
       secOther:    sum(null),
       expectedBar: (!d.isPast || d.isCurrentMonth) ? d.expected  : 0,
       possibleBar: (!d.isPast || d.isCurrentMonth) ? d.potential : 0,
+      // No per-sector £ target exists in Salesforce — approximate with a fixed
+      // 60/30/10 Private/Public/Social split of the overall monthly target.
+      target: selectedSector ? d.target * (SECTOR_TARGET_SHARE[selectedSector] ?? 1) : d.target,
     };
-  }), [data, opportunities]);
+  }), [data, opportunities, selectedSector]);
 
   const selectedMonthData = selection
     ? data.find(d => d.monthDate === selection.monthDate)
@@ -359,7 +372,9 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
           )}
           <span className="flex items-center gap-1.5">
             <span className="w-6 h-0.5 inline-block" style={{ borderTop: '2px dashed #dd6945' }} />
-            Target
+            {viewMode === 'sector' && selectedSector
+              ? `Target (${Math.round((SECTOR_TARGET_SHARE[selectedSector] ?? 1) * 100)}% est.)`
+              : 'Target'}
           </span>
           <button
             onClick={() => setShowLY(v => !v)}
