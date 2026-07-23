@@ -48,7 +48,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {payload.map((p: any) => (
         p.value !== null && p.value !== 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.fill ?? p.color }}>{p.name}</span>
+            {/* Bars set color via fill; Lines set it via stroke (color) and
+                default fill to white for dot markers — color must win first
+                or Line labels (e.g. Target) render as invisible white text. */}
+            <span style={{ color: p.color ?? p.fill }}>{p.name}</span>
             <span className="font-medium text-[#212122]">{fmtFull(p.value)}</span>
           </p>
         )

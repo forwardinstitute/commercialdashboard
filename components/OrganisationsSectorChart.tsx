@@ -40,7 +40,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       {payload.filter((p: any) => p.name !== 'Weighted potential').map((p: any) =>
         p.value > 0 && (
           <p key={p.name} className="flex justify-between gap-4 mb-0.5">
-            <span style={{ color: p.fill ?? p.color }}>{p.name}</span>
+            {/* Lines set colour via stroke (color) and default fill to white
+                for dot markers — color must win first or it renders invisible. */}
+            <span style={{ color: p.color ?? p.fill }}>{p.name}</span>
             <span className="font-medium text-[#212122]">{fmtFull(p.value)}</span>
           </p>
         )
