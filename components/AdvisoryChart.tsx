@@ -70,6 +70,15 @@ function coversMonth(opp: AdvisoryOpportunity, monthDate: string): boolean {
   return oppStart <= d && oppEnd >= monthStart;
 }
 
+function orderCoversMonth(order: AdvisoryOrder, monthDate: string): boolean {
+  if (!order.Project_Start_Date__c || !order.Project_End_Date__c) return false;
+  const d = new Date(monthDate);
+  const monthStart  = new Date(d.getFullYear(), d.getMonth(), 1);
+  const orderStart  = new Date(order.Project_Start_Date__c);
+  const orderEnd    = new Date(order.Project_End_Date__c);
+  return orderStart <= d && orderEnd >= monthStart;
+}
+
 function monthlySlice(opp: AdvisoryOpportunity): number {
   if (!opp.Amount) return 0;
   const months = opp.Number_of_Months__c && opp.Number_of_Months__c > 0
@@ -149,7 +158,18 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
     possibleBar:  (!d.isPast || d.isCurrentMonth) ? d.potential   : 0,
   }));
 
-  // Sector view: per-month confirmed income broken down by sector
+  // Each Order links to exactly one Opportunity (via Opportunity.Order__c),
+  // so an order's sector is just its linked opp's sector — real figures, not
+  // an estimate like the Target split below.
+  const orderSector = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const opp of opportunities) {
+      if (opp.Order__c) map.set(opp.Order__c, oppSector(opp));
+    }
+    return map;
+  }, [opportunities]);
+
+  // Sector view: per-month confirmed income, invoiced and paid broken down by sector
   const sectorChartData: ChartRow[] = useMemo(() => data.map(d => {
     const confirmed = opportunities.filter(
       opp => opp.StageName === 'Confirmed' && coversMonth(opp, d.monthDate)
@@ -159,6 +179,12 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
         ? oppSector(opp) === sector
         : !['Private', 'Public', 'Social'].includes(oppSector(opp)))
       .reduce((s, opp) => s + monthlySlice(opp), 0);
+
+    const monthOrders = orders.filter(o => orderCoversMonth(o, d.monthDate));
+    const sumOrders = (field: 'Monthly_Invoiced_Amount__c' | 'Paid_Amount_Per_Month__c', sector: string) => monthOrders
+      .filter(o => (orderSector.get(o.Id) ?? 'Unknown') === sector)
+      .reduce((s, o) => s + (o[field] ?? 0), 0);
+
     return {
       ...d,
       secPrivate:  sum('Private'),
@@ -170,8 +196,11 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
       // No per-sector £ target exists in Salesforce — approximate with a fixed
       // 60/30/10 Private/Public/Social split of the overall monthly target.
       target: selectedSector ? d.target * (SECTOR_TARGET_SHARE[selectedSector] ?? 1) : d.target,
+      // Invoiced/Paid ARE real per-sector figures — joined via each order's opp.
+      invoiced: selectedSector ? sumOrders('Monthly_Invoiced_Amount__c', selectedSector) : d.invoiced,
+      paid:     selectedSector ? sumOrders('Paid_Amount_Per_Month__c', selectedSector)   : d.paid,
     };
-  }), [data, opportunities, selectedSector]);
+  }), [data, opportunities, orders, orderSector, selectedSector]);
 
   const selectedMonthData = selection
     ? data.find(d => d.monthDate === selection.monthDate)
