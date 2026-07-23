@@ -119,7 +119,15 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
   const [fyTab, setFyTab]           = useState<'projects' | 'sectors'>('projects');
   const [fyBarType, setFyBarType]   = useState<BarType>('confirmed');
 
-  const chartData = data.map(d => ({
+  // Shared row shape for both chart modes — recharts 3 infers the ComposedChart
+  // data type strictly, so stage and sector rows must line up on one type even
+  // though each mode only populates the fields its own Bars read.
+  type ChartRow = MonthlyData & {
+    confirmedBar?: number; expectedBar?: number; possibleBar?: number;
+    secPrivate?: number; secPublic?: number; secSocial?: number; secOther?: number;
+  };
+
+  const chartData: ChartRow[] = data.map(d => ({
     ...d,
     confirmedBar: d.confirmed,
     // Expected = probability-weighted income from open opps (slice × prob%)
@@ -129,7 +137,7 @@ export default function AdvisoryChart({ data, opportunities, orders, uninvoicedS
   }));
 
   // Sector view: per-month confirmed income broken down by sector
-  const sectorChartData = useMemo(() => data.map(d => {
+  const sectorChartData: ChartRow[] = useMemo(() => data.map(d => {
     const confirmed = opportunities.filter(
       opp => opp.StageName === 'Confirmed' && coversMonth(opp, d.monthDate)
     );
